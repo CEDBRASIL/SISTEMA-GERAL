@@ -8,7 +8,7 @@ OM_BASE = os.getenv("OM_BASE")
 BASIC_B64 = os.getenv("BASIC_B64")
 UNIDADE_ID = os.getenv("UNIDADE_ID")
 
-@router.get("/token", summary="Obtem token da unidade")
+@router.get("/secure", summary="Obtem token da unidade")
 def obter_token():
     if not all([OM_BASE, BASIC_B64, UNIDADE_ID]):
         raise HTTPException(500, detail="Variáveis de ambiente não configuradas corretamente.")
