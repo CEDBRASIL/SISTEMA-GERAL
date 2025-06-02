@@ -6,6 +6,9 @@ from fastapi.staticfiles import StaticFiles
 import cursos
 import matricular
 import secure
+import assinatura
+import pre_matricula
+
 
 
 app = FastAPI(title="CED API - Cursos e Matrícula", version="1.0")
@@ -23,9 +26,12 @@ app.add_middleware(
 app.include_router(cursos.router, prefix="/cursos", tags=["Cursos"])
 app.include_router(matricular.router, prefix="/matricular", tags=["Matrícula"])
 app.include_router(secure.router, tags=["Autenticação"])
+app.include_router(assinatura.router, tags=["Assinatura"])
+app.include_router(pre_matricula.router, tags=["Pré Matrícula"])
+
 
 
 # Endpoint de status
 @app.get("/api")
 def status():
-    return {"status": "API CED ativa"}
+    return {"status": "API Operando OK - CED API 1.0 made by @furionnzxt"}
