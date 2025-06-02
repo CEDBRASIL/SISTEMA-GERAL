@@ -8,7 +8,7 @@ from typing import List, Tuple, Optional
 import requests
 from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime
-from cursos import curso
+from cursos import cursos
 
 router = APIRouter()
 
