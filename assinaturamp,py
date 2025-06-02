@@ -26,27 +26,35 @@ def buscar_assinatura(subscription_id: str):
 async def webhook_mp(request: Request):
     try:
         body = await request.json()
+        print("[WEBHOOK DEBUG]", json.dumps(body, indent=2))
+
         _type = body.get("type")
         _id = body.get("data", {}).get("id")
 
-        if _type != "preapproval":
+        if _type != "preapproval" or not _id:
             return {"ignored": True}
+
+        if not MP_TOKEN:
+            raise HTTPException(500, detail="MP_TOKEN não configurado")
 
         assinatura = buscar_assinatura(_id)
         if not assinatura or assinatura.get("status") != "authorized":
             return {"ignored": True}
 
-        email = assinatura.get("payer_email")
+        email = assinatura.get("payer_email") or assinatura.get("payer", {}).get("email")
+        if not email:
+            raise HTTPException(400, detail="Email do pagador não encontrado")
+
         dados = buscar_dados_por_email(email)
         if not dados:
-            raise HTTPException(404, detail="Dados do aluno não encontrados")
+            raise HTTPException(404, detail=f"Dados do aluno não encontrados para {email}")
 
         nome = dados["nome"]
         whatsapp = dados["whatsapp"]
         cursos = dados["cursos"]
+
         aluno_id, cpf, ids = matricular_aluno(nome, whatsapp, email, cursos)
 
-        # Aqui pode acionar WhatsApp + Discord
         print(f"[MATRICULADO] {nome} | {cpf} | {cursos}")
 
         return {"status": "matriculado", "cpf": cpf, "aluno_id": aluno_id}
