@@ -1,27 +1,22 @@
 """
 webhook.py
 ──────────
-Recebe notificações (webhooks/IPN) do Mercado Pago, confirma que a assinatura
-(preapproval) está ATIVA e conclui a matrícula:
+Recebe notificações de ASSINATURA (preapproval) do Mercado Pago, confirma
+pagamento e conclui matrícula: remove pendente, envia WhatsApp e loga no Discord.
 
-• Marca a matrícula como confirmada (remove do JSON pendentes)
-• Envia WhatsApp de boas-vindas via ChatPro
-• Registra o evento no Discord
-
-Pré-requisitos:
-  - Variáveis de ambiente:
-        MP_ACCESS_TOKEN
-        MP_ACCESS_TOKEN_SANDBOX
-        CHATPRO_URL, CHATPRO_TOKEN
-        DISCORD_WEBHOOK
-  - Arquivo 'dados_pendentes.json' (gerado por matricular.py) na raiz
+• Requer variáveis de ambiente:
+    MP_ACCESS_TOKEN              → produção
+    MP_ACCESS_TOKEN_SANDBOX      → sandbox
+    MP_WEBHOOK_SECRET            → token secreto gerado no painel Mercado Pago
+    CHATPRO_URL, CHATPRO_TOKEN
+    DISCORD_WEBHOOK
 """
 
 import os
 import json
-import requests
 from typing import Dict
 
+import requests
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException
 
 from chatpro import send_whatsapp
@@ -29,11 +24,15 @@ from discord_log import send_discord
 
 router = APIRouter()
 
-# Arquivo onde matricular.py guarda pré-matrículas
-ARQUIVO_JSON = "dados_pendentes.json"
+# ──────────────────────────────────────────────────────────
+# Configurações
+# ──────────────────────────────────────────────────────────
+SECRET = os.getenv("MP_WEBHOOK_SECRET")           # token secreto do MP
+ARQUIVO_JSON = "dados_pendentes.json"             # onde matricular.py salva pendentes
+
 
 # ──────────────────────────────────────────────────────────
-# Helpers de armazenamento
+# Funções auxiliares de dados
 # ──────────────────────────────────────────────────────────
 def _carregar_pendentes() -> Dict[str, Dict]:
     if os.path.exists(ARQUIVO_JSON):
@@ -48,106 +47,98 @@ def _salvar_pendentes(data: Dict[str, Dict]):
 
 
 # ──────────────────────────────────────────────────────────
-# Consulta assinatura no Mercado Pago
+# Mercado Pago – consulta assinatura
 # ──────────────────────────────────────────────────────────
 def _consultar_assinatura(preapproval_id: str) -> Dict:
-    """
-    Consulta a assinatura no Mercado Pago usando o access_token correto
-    (produção ou sandbox) e devolve o JSON.
-    """
-    is_sandbox = preapproval_id.startswith("TEST-")
-    token = (
-        os.getenv("MP_ACCESS_TOKEN_SANDBOX")
-        if is_sandbox
-        else os.getenv("MP_ACCESS_TOKEN")
-    )
-
+    """Retorna JSON da assinatura via API Mercado Pago."""
+    sandbox = preapproval_id.startswith("TEST-")
+    token = os.getenv("MP_ACCESS_TOKEN_SANDBOX") if sandbox else os.getenv("MP_ACCESS_TOKEN")
     if not token:
         raise RuntimeError("Access-token do Mercado Pago não configurado.")
 
     url = f"https://api.mercadopago.com/preapproval/{preapproval_id}"
-    response = requests.get(url, params={"access_token": token}, timeout=20)
-    response.raise_for_status()
-    return response.json()
+    resp = requests.get(url, params={"access_token": token}, timeout=20)
+    resp.raise_for_status()
+    return resp.json()
 
 
-def _processar_confirmacao(preapproval_id: str):
-    """Processa a confirmação em background."""
+# ──────────────────────────────────────────────────────────
+# Processamento em segundo plano
+# ──────────────────────────────────────────────────────────
+def _processar_preapproval(preapproval_id: str):
     try:
         assinatura = _consultar_assinatura(preapproval_id)
-    except (requests.HTTPError, requests.RequestException) as exc:
+    except Exception as exc:
         print("❌ Falha ao consultar assinatura:", exc)
         return
 
-    # Verifica se já está autorizada
     if assinatura.get("status") != "authorized":
-        print(f"📣 Assinatura {preapproval_id} ainda não autorizada (status={assinatura.get('status')}).")
+        print(f"ℹ️ Assinatura {preapproval_id} não autorizada (status={assinatura.get('status')}).")
         return
 
     ref = str(assinatura.get("external_reference", "")).strip()
     if not ref:
-        print("❌ external_reference ausente; impossível correlacionar matrícula.")
+        print("❌ external_reference ausente.")
         return
 
     pendentes = _carregar_pendentes()
-    mat = pendentes.pop(ref, None)
-
-    if not mat:
-        print(f"⚠️ Matrícula pendente não encontrada para ref {ref}.")
+    matricula = pendentes.pop(ref, None)
+    if not matricula:
+        print(f"⚠️ Matrícula {ref} não encontrada em pendentes.")
         return
 
-    # Atualiza armazenamento (remove pendente)
-    _salvar_pendentes(pendentes)
+    _salvar_pendentes(pendentes)  # remove a pendente
 
-    # Envia WhatsApp
-    msg_wp = (
-        f"🎉 Olá {mat['nome']}, sua matrícula no curso {mat['curso_nome']} foi confirmada!\n"
-        "Em breve você receberá suas credenciais de acesso.\n"
-        "Bem-vindo(a) à CED 🏆"
+    # Enviar WhatsApp
+    mensagem_wp = (
+        f"🎉 Olá {matricula['nome']}, sua matrícula no curso {matricula['curso_nome']} "
+        "foi confirmada!\nBem-vindo(a) à CED."
     )
-    send_whatsapp(mat["whatsapp"], msg_wp)
+    send_whatsapp(matricula["whatsapp"], mensagem_wp)
 
-    # Log no Discord
+    # Log Discord
     send_discord(
-        f"✅ **Matrícula confirmada**\n"
-        f"Aluno: **{mat['nome']}**\n"
-        f"Curso: *{mat['curso_nome']}*\n"
-        f"Ambiente: {'Sandbox' if preapproval_id.startswith('TEST-') else 'Produção'}"
+        f"✅ **Matrícula confirmada**  \nAluno: **{matricula['nome']}**  \n"
+        f"Curso: *{matricula['curso_nome']}*  \nAmbiente: "
+        f"{'Sandbox' if preapproval_id.startswith('TEST-') else 'Produção'}"
     )
 
-    print("✅ Matrícula finalizada para", mat["nome"])
+    print("✅ Matrícula finalizada para", matricula["nome"])
 
 
 # ──────────────────────────────────────────────────────────
-# Rota principal de webhook
+# Endpoint Webhook
 # ──────────────────────────────────────────────────────────
 @router.post("/")
 async def receber_webhook(request: Request, background: BackgroundTasks):
     """
-    Mercado Pago chama aqui quando a assinatura muda de status.
-
-    Aceitamos:
-        • body JSON → {"id": "...", "type": "preapproval", ...}
-        • query-string   ?id=...&type=preapproval
+    Mercado Pago envia notificação em:
+        • formato IPN (query params ?id=...&topic=preapproval)
+        • formato Webhook JSON {"id": "...", "type": "preapproval"}
+    Valida token secreto (MP_WEBHOOK_SECRET) se configurado.
     """
-    preapproval_id: str = ""
+    # ── 1. Verificar assinatura do webhook ──
+    if SECRET:
+        header_secret = (
+            request.headers.get("X-Hook-Secret")
+            or request.headers.get("x-signature")
+            or request.headers.get("x-hook-secret")
+        )
+        if header_secret != SECRET:
+            raise HTTPException(status_code=401, detail="Webhook signature mismatch")
 
-    # Caso venha por query (IPN)
-    if "id" in request.query_params:
-        preapproval_id = request.query_params.get("id", "")
-
-    # Caso venha JSON
+    # ── 2. Extrair preapproval_id ──
+    preapproval_id = request.query_params.get("id") or ""
     if not preapproval_id:
         try:
             body = await request.json()
             preapproval_id = str(body.get("id", ""))
         except Exception:
-            body = {}
-            # ignoramos se não for JSON
+            pass
 
     if not preapproval_id:
-        raise HTTPException(status_code=400, detail="preapproval_id não fornecido")
+        raise HTTPException(status_code=400, detail="id não fornecido")
 
-    # Processa em background para responder rápido ao MP
-    background.add_task(_processar_confirmacao, preapproval_id)
+    # ── 3. Processar em background ──
+    background.add_task(_processar_preapproval, preapproval_id)
     return {"status": "received", "id": preapproval_id}
