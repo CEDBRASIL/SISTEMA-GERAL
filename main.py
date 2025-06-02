@@ -20,6 +20,7 @@ import cursos
 import secure
 import matricular
 import webhook
+import pre_matricular
 
 # ──────────────────────────────────────────────────────────
 # Instância FastAPI
@@ -56,6 +57,7 @@ app.include_router(cursos.router,      prefix="/cursos",      tags=["Cursos"])
 app.include_router(secure.router,      prefix="/api/auth",    tags=["Autenticação"])
 app.include_router(matricular.router,  prefix="/api",         tags=["Matrícula"])
 app.include_router(webhook.router,     prefix="/webhook",     tags=["Webhooks"])
+app.include_router(pre_matricular.router, prefix="/api", tags=["Matrícula"])
 
 # ──────────────────────────────────────────────────────────
 # Health-check simples
