@@ -31,8 +31,8 @@ from discord_log import send_discord
 
 router = APIRouter()
 
-SECRET = os.getenv("MP_WEBHOOK_SECRET")              # token do painel MP
-MP_TOKEN = os.getenv("MP_ACCESS_TOKEN")              # token privado produção
+SECRET = ("5800de2e8c05ca9d3f02894251b676588e70d0cd312bba58426325c5e8d710a4")              # token do painel MP
+MP_TOKEN = ("APP_USR-4705638445569453-052018-9ef9a630c8674acd5823c9ee93e7cfa1-2335471951")              # token privado produção
 ARQ_PENDENTES = "pendentes.json"                     # gerado por pre_matricular.py
 
 
