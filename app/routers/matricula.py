@@ -8,7 +8,7 @@ from typing import List, Tuple, Optional
 import requests
 from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime
-from cursos import CURSOS_OM
+from cursos import curso
 
 router = APIRouter()
 
@@ -93,7 +93,7 @@ def _cadastrar_aluno(nome:str, whatsapp:str, email:str, cursos_ids:List[int], to
 def _nome_para_ids(cursos:List[str])->List[int]:
     ids=[]
     for nome in cursos:
-        ids.extend(CURSOS_OM.get(nome.strip(), []))
+        ids.extend(cursos.get(nome.strip(), []))
     return ids
 
 def matricular_aluno(nome:str, whatsapp:str, email:Optional[str], cursos:List[str])->Tuple[str,str,List[int]]:
