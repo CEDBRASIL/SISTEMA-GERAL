@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 import cursos
 import matricular
 import secure
-import assinatura
+import assinaturamp
 import pre_matricula
 
 
@@ -26,7 +26,7 @@ app.add_middleware(
 app.include_router(cursos.router, prefix="/cursos", tags=["Cursos"])
 app.include_router(matricular.router, prefix="/matricular", tags=["Matrícula"])
 app.include_router(secure.router, tags=["Autenticação"])
-app.include_router(assinatura.router, tags=["Assinatura"])
+app.include_router(assinaturamp.router, tags=["Assinatura"])
 app.include_router(pre_matricula.router, tags=["Pré Matrícula"])
 
 
