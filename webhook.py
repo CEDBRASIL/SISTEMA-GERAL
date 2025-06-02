@@ -52,7 +52,7 @@ def _salvar_pendentes(data: Dict[str, Dict]):
 def _consultar_assinatura(preapproval_id: str) -> Dict:
     """Retorna JSON da assinatura via API Mercado Pago."""
     sandbox = preapproval_id.startswith("TEST-")
-    token = os.getenv("MP_ACCESS_TOKEN_SANDBOX") if sandbox else os.getenv("MP_ACCESS_TOKEN")
+    token = os.getenv("MP_TEST_ACCESS_TOKEN") if sandbox else os.getenv("MP_ACCESS_TOKEN")
     if not token:
         raise RuntimeError("Access-token do Mercado Pago não configurado.")
 
