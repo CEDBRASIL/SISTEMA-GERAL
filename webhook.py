@@ -1,15 +1,22 @@
 """
 webhook.py
 ──────────
-Recebe notificações de ASSINATURA (preapproval) do Mercado Pago, confirma
-pagamento e conclui matrícula: remove pendente, envia WhatsApp e loga no Discord.
+Endpoint que recebe notificações de ASSINATURA (preapproval) do Mercado Pago.
 
-• Requer variáveis de ambiente:
-    MP_ACCESS_TOKEN              → produção
-    MP_ACCESS_TOKEN_SANDBOX      → sandbox
-    MP_WEBHOOK_SECRET            → token secreto gerado no painel Mercado Pago
-    CHATPRO_URL, CHATPRO_TOKEN
-    DISCORD_WEBHOOK
+• Confirma se o header contém o token secreto (MP_WEBHOOK_SECRET)
+• Consulta a assinatura via API Mercado Pago:
+    status == "authorized"  → pagamento inicial aprovado
+• Remove matrícula do arquivo pendente, envia WhatsApp (ChatPro) e registra
+  log no Discord.
+
+Variáveis de ambiente necessárias
+──────────────────────────────────
+MP_ACCESS_TOKEN              # produção
+MP_ACCESS_TOKEN_SANDBOX      # sandbox
+MP_WEBHOOK_SECRET            # token secreto gerado no painel Mercado Pago
+CHATPRO_URL
+CHATPRO_TOKEN
+DISCORD_WEBHOOK
 """
 
 import os
@@ -27,12 +34,12 @@ router = APIRouter()
 # ──────────────────────────────────────────────────────────
 # Configurações
 # ──────────────────────────────────────────────────────────
-SECRET = os.getenv("MP_WEBHOOK_SECRET")           # token secreto do MP
-ARQUIVO_JSON = "dados_pendentes.json"             # onde matricular.py salva pendentes
+SECRET = os.getenv("MP_WEBHOOK_SECRET")
+ARQUIVO_JSON = "dados_pendentes.json"   # gerado por matricular.py
 
 
 # ──────────────────────────────────────────────────────────
-# Funções auxiliares de dados
+# Helpers de armazenamento local de matrículas
 # ──────────────────────────────────────────────────────────
 def _carregar_pendentes() -> Dict[str, Dict]:
     if os.path.exists(ARQUIVO_JSON):
@@ -50,9 +57,9 @@ def _salvar_pendentes(data: Dict[str, Dict]):
 # Mercado Pago – consulta assinatura
 # ──────────────────────────────────────────────────────────
 def _consultar_assinatura(preapproval_id: str) -> Dict:
-    """Retorna JSON da assinatura via API Mercado Pago."""
+    """Consulta a API Mercado Pago e devolve o JSON da assinatura."""
     sandbox = preapproval_id.startswith("TEST-")
-    token = os.getenv("MP_TEST_ACCESS_TOKEN") if sandbox else os.getenv("MP_ACCESS_TOKEN")
+    token = os.getenv("MP_ACCESS_TOKEN_SANDBOX") if sandbox else os.getenv("MP_ACCESS_TOKEN")
     if not token:
         raise RuntimeError("Access-token do Mercado Pago não configurado.")
 
@@ -63,7 +70,7 @@ def _consultar_assinatura(preapproval_id: str) -> Dict:
 
 
 # ──────────────────────────────────────────────────────────
-# Processamento em segundo plano
+# Processamento em background
 # ──────────────────────────────────────────────────────────
 def _processar_preapproval(preapproval_id: str):
     try:
@@ -87,37 +94,37 @@ def _processar_preapproval(preapproval_id: str):
         print(f"⚠️ Matrícula {ref} não encontrada em pendentes.")
         return
 
-    _salvar_pendentes(pendentes)  # remove a pendente
+    _salvar_pendentes(pendentes)  # remove a matrícula pendente
 
-    # Enviar WhatsApp
+    # WhatsApp
     mensagem_wp = (
         f"🎉 Olá {matricula['nome']}, sua matrícula no curso {matricula['curso_nome']} "
-        "foi confirmada!\nBem-vindo(a) à CED."
+        "foi confirmada! Bem-vindo(a) à CED."
     )
     send_whatsapp(matricula["whatsapp"], mensagem_wp)
 
-    # Log Discord
+    # Discord
     send_discord(
-        f"✅ **Matrícula confirmada**  \nAluno: **{matricula['nome']}**  \n"
-        f"Curso: *{matricula['curso_nome']}*  \nAmbiente: "
-        f"{'Sandbox' if preapproval_id.startswith('TEST-') else 'Produção'}"
+        f"✅ **Matrícula confirmada**\n"
+        f"Aluno: **{matricula['nome']}**\n"
+        f"Curso: *{matricula['curso_nome']}*\n"
+        f"Ambiente: {'Sandbox' if preapproval_id.startswith('TEST-') else 'Produção'}"
     )
 
     print("✅ Matrícula finalizada para", matricula["nome"])
 
 
 # ──────────────────────────────────────────────────────────
-# Endpoint Webhook
+# Endpoint webhook  (ATENÇÃO: rota sem “/” final evita HTTP 307)
 # ──────────────────────────────────────────────────────────
-@router.post("/")
+@router.post("")   # prefixo /webhook + "" = /webhook   (sem redirecionar)
 async def receber_webhook(request: Request, background: BackgroundTasks):
     """
-    Mercado Pago envia notificação em:
-        • formato IPN (query params ?id=...&topic=preapproval)
-        • formato Webhook JSON {"id": "...", "type": "preapproval"}
-    Valida token secreto (MP_WEBHOOK_SECRET) se configurado.
+    Mercado Pago envia:
+        • IPN (query: id=...&topic=preapproval)
+        • Webhook JSON { "id": "...", "type": "subscription_preapproval", ... }
     """
-    # ── 1. Verificar assinatura do webhook ──
+    # ── 1. Validar token secreto ──
     if SECRET:
         header_secret = (
             request.headers.get("X-Hook-Secret")
