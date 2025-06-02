@@ -4,7 +4,7 @@ from matricular import matricular_aluno
 
 router = APIRouter()
 
-MP_TOKEN = os.getenv("MP_TOKEN")
+MP_TOKEN = os.getenv("MP_ACESS_TOKEN")
 ARQUIVO_JSON = "dados_pendentes.json"
 
 def buscar_dados_por_email(email: str):
