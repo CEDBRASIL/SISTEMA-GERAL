@@ -1,37 +1,66 @@
+"""
+main.py
+───────
+Ponto de entrada da API FastAPI da CED.
+
+Inclui roteadores:
+    • /cursos              → lista de cursos (cursos.py)
+    • /api/auth            → autenticação (secure.py)
+    • /api/matricular      → pré-matrícula + criação de assinatura (matricular.py)
+    • /webhook             → confirmação Mercado Pago (webhook.py)
+
+CORS aberto por padrão; ajuste a lista ORIGINS no .env se precisar restringir.
+"""
+
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
-# Importando apenas os módulos desejados
 import cursos
-import matricular
 import secure
-import assinaturamp
-import pre_matricula
+import matricular
+import webhook
 
+# ──────────────────────────────────────────────────────────
+# Instância FastAPI
+# ──────────────────────────────────────────────────────────
+app = FastAPI(
+    title="API CED – Matrícula Automática",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
 
+# ──────────────────────────────────────────────────────────
+# CORS – libere apenas os domínios necessários em PROD
+# Ex.: ORIGINS=https://www.cedbrasilia.com.br,https://ced-frontend.onrender.com
+# ──────────────────────────────────────────────────────────
+origins = [
+    origin.strip()
+    for origin in os.getenv("ORIGINS", "*").split(",")
+    if origin.strip()
+]
 
-app = FastAPI(title="CED API - Cursos e Matrícula", version="1.0")
-
-# Middleware CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Roteadores incluídos
-app.include_router(cursos.router, prefix="/cursos", tags=["Cursos"])
-app.include_router(matricular.router, prefix="/matricular", tags=["Matrícula"])
-app.include_router(secure.router, tags=["Autenticação"])
-app.include_router(assinaturamp.router, tags=["Assinatura"])
-app.include_router(pre_matricula.router, tags=["Pré Matrícula"])
+# ──────────────────────────────────────────────────────────
+# Registrar roteadores
+# ──────────────────────────────────────────────────────────
+app.include_router(cursos.router,      prefix="/cursos",      tags=["Cursos"])
+app.include_router(secure.router,      prefix="/api/auth",    tags=["Autenticação"])
+app.include_router(matricular.router,  prefix="/api",         tags=["Matrícula"])
+app.include_router(webhook.router,     prefix="/webhook",     tags=["Webhooks"])
 
-
-
-# Endpoint de status
-@app.get("/api")
-def status():
-    return {"status": "API Operando OK - CED API 1.0 made by @furionnzxt"}
+# ──────────────────────────────────────────────────────────
+# Health-check simples
+# ──────────────────────────────────────────────────────────
+@app.get("/", tags=["Status"])
+def health():
+    """Verifica se o serviço está operacional."""
+    return {"status": "online", "version": app.version}
