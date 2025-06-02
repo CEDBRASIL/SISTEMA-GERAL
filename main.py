@@ -54,7 +54,7 @@ app.add_middleware(
 # Registrar roteadores
 # ──────────────────────────────────────────────────────────
 app.include_router(cursos.router,      prefix="/cursos",      tags=["Cursos"])
-app.include_router(secure.router,      prefix="/api/auth",    tags=["Autenticação"])
+app.include_router(secure.router, tags=["Autenticação"])
 app.include_router(matricular.router,  prefix="/api",         tags=["Matrícula"])
 app.include_router(webhook.router,     prefix="/webhook",     tags=["Webhooks"])
 app.include_router(pre_matricular.router, prefix="/api", tags=["Matrícula"])
