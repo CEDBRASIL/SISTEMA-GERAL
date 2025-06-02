@@ -12,7 +12,7 @@ Endpoint que recebe notificações de ASSINATURA (preapproval) do Mercado Pago.
 Variáveis de ambiente necessárias
 ──────────────────────────────────
 MP_ACCESS_TOKEN              # produção
-MP_ACCESS_TOKEN_SANDBOX      # sandbox
+MP_TEST_ACCESS_TOKEN      # sandbox
 MP_WEBHOOK_SECRET            # token secreto gerado no painel Mercado Pago
 CHATPRO_URL
 CHATPRO_TOKEN
@@ -59,7 +59,7 @@ def _salvar_pendentes(data: Dict[str, Dict]):
 def _consultar_assinatura(preapproval_id: str) -> Dict:
     """Consulta a API Mercado Pago e devolve o JSON da assinatura."""
     sandbox = preapproval_id.startswith("TEST-")
-    token = os.getenv("MP_ACCESS_TOKEN_SANDBOX") if sandbox else os.getenv("MP_ACCESS_TOKEN")
+    token = os.getenv("MP_TEST_ACCESS_TOKEN") if sandbox else os.getenv("MP_ACCESS_TOKEN")
     if not token:
         raise RuntimeError("Access-token do Mercado Pago não configurado.")
 
