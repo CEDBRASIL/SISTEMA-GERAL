@@ -24,8 +24,6 @@ app.include_router(cursos.router, prefix="/api/cursos", tags=["Cursos"])
 app.include_router(matricular.router, prefix="/api/matricula", tags=["Matrícula"])
 app.include_router(secure.router, prefix="/api/auth", tags=["Autenticação"])
 
-# Static files (se quiser servir HTML futuramente)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 # Endpoint de status
 @app.get("/api")
