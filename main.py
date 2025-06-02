@@ -20,9 +20,9 @@ app.add_middleware(
 )
 
 # Roteadores incluídos
-app.include_router(cursos.router, prefix="/api/cursos", tags=["Cursos"])
-app.include_router(matricular.router, prefix="/api/matricula", tags=["Matrícula"])
-app.include_router(secure.router, prefix="/api/auth", tags=["Autenticação"])
+app.include_router(cursos.router, prefix="/cursos", tags=["Cursos"])
+app.include_router(matricular.router, prefix="/matricular", tags=["Matrícula"])
+app.include_router(secure.router, prefix="/secure", tags=["Autenticação"])
 
 
 # Endpoint de status
