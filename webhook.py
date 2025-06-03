@@ -87,13 +87,16 @@ def call_cadastrar_endpoint(student_data: dict, external_reference: str, is_sand
     Chama o endpoint /cadastrar para finalizar a matrícula no OM e enviar ChatPro.
     """
     _log(f"Chamando endpoint /cadastrar para external_reference: {external_reference} (Sandbox: {is_sandbox_transaction})")
+    
+    # Inicializa status_prefix para evitar UnboundLocalError
+    status_prefix = "[SANDBOX] " if is_sandbox_transaction else ""
+
     try:
-        response = requests.post(CADASTRO_API_URL, json=student_data, timeout=15)
+        # Aumentado o timeout para dar mais tempo para a requisição
+        response = requests.post(CADASTRO_API_URL, json=student_data, timeout=30) # Aumentado para 30 segundos
         response.raise_for_status() # Levanta exceção para status HTTP 4xx/5xx
         cad_result = response.json()
         _log(f"Resposta do endpoint /cadastrar para {external_reference}: {cad_result}")
-        
-        status_prefix = "[SANDBOX] " if is_sandbox_transaction else ""
         
         if cad_result.get("status") == "ok":
             send_discord_notification(
@@ -172,13 +175,16 @@ async def mercadopago_webhook(request: Request):
             elif topic == 'payment':
                 resource_info_dict = sdk_prod.payment().get(resource_id)
             
+            # Check if resource_info_dict is not None before calling .get()
             if resource_info_dict and resource_info_dict.get("status") in [200, 201]:
                 sdk_to_use = sdk_prod
                 _log(f"Recurso {resource_id} encontrado com SDK de PRODUÇÃO.")
             elif resource_info_dict and resource_info_dict.get("status") == 404:
                 _log(f"Recurso {resource_id} NÃO encontrado com SDK de PRODUÇÃO (404). Tentando SANDBOX...")
             else:
-                _log(f"Erro inesperado ao buscar recurso {resource_id} com SDK de PRODUÇÃO. Status: {resource_info_dict.get('status')}. Tentando SANDBOX...")
+                # Log the status if it's not 200/201/404 for better debugging
+                status_log = resource_info_dict.get('status') if resource_info_dict else 'None'
+                _log(f"Erro inesperado ao buscar recurso {resource_id} com SDK de PRODUÇÃO. Status: {status_log}. Tentando SANDBOX...")
         except requests.exceptions.RequestException as e: # Catch RequestException for network/HTTP errors
             if hasattr(e, 'response') and e.response.status_code == 404:
                 _log(f"RequestException (404) ao buscar recurso {resource_id} com SDK de PRODUÇÃO. Tentando SANDBOX...")
@@ -195,6 +201,7 @@ async def mercadopago_webhook(request: Request):
             elif topic == 'payment':
                 resource_info_dict = sdk_test.payment().get(resource_id)
             
+            # Check if resource_info_dict is not None before calling .get()
             if resource_info_dict and resource_info_dict.get("status") in [200, 201]:
                 sdk_to_use = sdk_test
                 is_sandbox_transaction = True
@@ -202,7 +209,9 @@ async def mercadopago_webhook(request: Request):
             elif resource_info_dict and resource_info_dict.get("status") == 404:
                 _log(f"Recurso {resource_id} NÃO encontrado com SDK de TESTE (404).")
             else:
-                _log(f"Erro inesperado ao buscar recurso {resource_id} com SDK de TESTE. Status: {resource_info_dict.get('status')}.")
+                # Log the status if it's not 200/201/404 for better debugging
+                status_log = resource_info_dict.get('status') if resource_info_dict else 'None'
+                _log(f"Erro inesperado ao buscar recurso {resource_id} com SDK de TESTE. Status: {status_log}.")
         except requests.exceptions.RequestException as e: # Catch RequestException for network/HTTP errors
             if hasattr(e, 'response') and e.response.status_code == 404:
                 _log(f"RequestException (404) ao buscar recurso {resource_id} com SDK de TESTE.")
@@ -406,3 +415,431 @@ async def pagamento_status_redirect(request: Request):
         "your_reference_id": external_reference,
         "important_note": "A confirmação final da sua matrícula e o status do pagamento serão enviados por e-mail e processados em segundo plano."
     }
+```
+
+Você está enfrentando um `AttributeError: 'NoneType' object has no attribute 'get'` e um `UnboundLocalError: cannot access local variable 'status_prefix'`. O `AttributeError` ocorre porque `resource_info_dict` pode ser `None` se a busca do recurso falhar com ambos os SDKs, e você está tentando chamar `.get('status')` nele. O `UnboundLocalError` ocorre porque `status_prefix` não é inicializada em todos os caminhos de execução da função `call_cadastrar_endpoint`.
+
+Vou corrigir esses problemas no seu `webhook.py` no Canvas.
+
+Aqui está o arquivo `webhook.py` corrigido:
+
+
+```python
+"""
+webhook.py – Recebe notificações do Mercado Pago e finaliza a matrícula.
+Envia logs para o Discord.
+"""
+
+import os
+import requests
+from fastapi import APIRouter, HTTPException, Request
+from datetime import datetime
+import mercadopago
+import json
+
+# ──────────────────────────────────────────────────────────
+# Funções Auxiliares de Logging (Definida localmente)
+# ──────────────────────────────────────────────────────────
+def _log(msg: str):
+    """Função de logging simples para webhook.py."""
+    print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] [MP Webhook] {msg}")
+
+# ──────────────────────────────────────────────────────────
+# Variáveis de Ambiente
+# ──────────────────────────────────────────────────────────
+MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
+MP_TEST_ACCESS_TOKEN = os.getenv("MP_TEST_ACCESS_TOKEN") # Importar também o token de teste
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL") # Para webhooks de produção
+# URL do endpoint de cadastro que será chamado pelo webhook
+CADASTRO_API_URL = os.getenv("CADASTRO_API_URL", "https://api.cedbrasilia.com.br/cadastrar")
+
+
+# ──────────────────────────────────────────────────────────
+# Configuração Mercado Pago SDK (Instâncias separadas para Produção e Teste)
+# ──────────────────────────────────────────────────────────
+sdk_prod = None
+if MP_ACCESS_TOKEN:
+    try:
+        sdk_prod = mercadopago.SDK(access_token=MP_ACCESS_TOKEN)
+        _log("SDK Mercado Pago (Produção) inicializado com sucesso em webhook.py.")
+    except Exception as e:
+        _log(f"ERRO ao inicializar SDK Mercado Pago (Produção): {e}.")
+
+sdk_test = None
+if MP_TEST_ACCESS_TOKEN:
+    try:
+        sdk_test = mercadopago.SDK(access_token=MP_TEST_ACCESS_TOKEN)
+        _log("SDK Mercado Pago (Teste) inicializado com sucesso em webhook.py.")
+    except Exception as e:
+        _log(f"ERRO ao inicializar SDK Mercado Pago (Teste): {e}.")
+
+if not sdk_prod and not sdk_test:
+    _log("ERRO CRÍTICO: Nenhum SDK do Mercado Pago (Produção ou Teste) pôde ser inicializado em webhook.py. As notificações NÃO FUNCIONARÃO.")
+
+router = APIRouter()
+
+# ──────────────────────────────────────────────────────────
+# Função para enviar mensagem para o Discord
+# ──────────────────────────────────────────────────────────
+def send_discord_notification(message: str, success: bool = True):
+    if not DISCORD_WEBHOOK_URL:
+        _log("AVISO: DISCORD_WEBHOOK_URL não configurada. Notificação do Discord desabilitada.")
+        return
+
+    color = 3066993 if success else 15158332 # Green for success, Red for error
+    
+    payload = {
+        "embeds": [
+            {
+                "title": "Status de Matrícula Automática (Webhook)",
+                "description": message,
+                "color": color,
+                "timestamp": datetime.now().isoformat(),
+                "footer": {"text": "Webhook MercadoPago"}
+            }
+        ]
+    }
+    try:
+        response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
+        response.raise_for_status()
+        _log(f"Notificação Discord enviada: {message[:100]}...")
+    except requests.exceptions.RequestException as e:
+        _log(f"ERRO ao enviar notificação Discord: {e}")
+
+# ──────────────────────────────────────────────────────────
+# Função para chamar o endpoint de cadastro/matrícula
+# ──────────────────────────────────────────────────────────
+def call_cadastrar_endpoint(student_data: dict, external_reference: str, is_sandbox_transaction: bool):
+    """
+    Chama o endpoint /cadastrar para finalizar a matrícula no OM e enviar ChatPro.
+    """
+    _log(f"Chamando endpoint /cadastrar para external_reference: {external_reference} (Sandbox: {is_sandbox_transaction})")
+    
+    # Inicializa status_prefix para evitar UnboundLocalError
+    status_prefix = "[SANDBOX] " if is_sandbox_transaction else ""
+
+    try:
+        # Aumentado o timeout para dar mais tempo para a requisição
+        response = requests.post(CADASTRO_API_URL, json=student_data, timeout=30) # Aumentado para 30 segundos
+        response.raise_for_status() # Levanta exceção para status HTTP 4xx/5xx
+        cad_result = response.json()
+        _log(f"Resposta do endpoint /cadastrar para {external_reference}: {cad_result}")
+        
+        if cad_result.get("status") == "ok":
+            send_discord_notification(
+                f"✅ {status_prefix}Matrícula Finalizada via Webhook! ✅\n"
+                f"Aluno: {student_data.get('nome')}\n"
+                f"Email: {student_data.get('email')}\n"
+                f"Cursos: {', '.join(student_data.get('cursos', []))}\n"
+                f"ID Aluno OM: {cad_result.get('aluno_id')}\n"
+                f"CPF Gerado: {cad_result.get('cpf')}\n"
+                f"Ref. Externa: {external_reference}",
+                success=True
+            )
+            return True
+        else:
+            send_discord_notification(
+                f"❌ {status_prefix}Erro ao Finalizar Matrícula via Webhook! ❌\n"
+                f"Aluno: {student_data.get('nome')}\n"
+                f"Ref. Externa: {external_reference}\n"
+                f"Erro no /cadastrar: {cad_result.get('detail') or cad_result.get('message') or 'Erro desconhecido'}",
+                success=False
+            )
+            return False
+    except requests.exceptions.RequestException as e:
+        _log(f"ERRO de conexão ao chamar /cadastrar para {external_reference}: {e}")
+        send_discord_notification(
+            f"⚠️ {status_prefix}Erro de Conexão no Webhook para /cadastrar! ⚠️\n"
+            f"Aluno: {student_data.get('nome')}\n"
+            f"Ref. Externa: {external_reference}\n"
+            f"Erro: {str(e)}",
+            success=False
+        )
+        return False
+    except Exception as e:
+        _log(f"ERRO inesperado ao processar resposta de /cadastrar para {external_reference}: {e}")
+        send_discord_notification(
+            f"⚠️ {status_prefix}Erro Inesperado no Webhook ao chamar /cadastrar! ⚠️\n"
+            f"Aluno: {student_data.get('nome')}\n"
+            f"Ref. Externa: {external_reference}\n"
+            f"Erro: {str(e)}",
+            success=False
+        )
+        return False
+
+
+# ──────────────────────────────────────────────────────────
+# Endpoint para Webhooks do Mercado Pago
+# ──────────────────────────────────────────────────────────
+@router.post("/webhook/mercadopago")
+async def mercadopago_webhook(request: Request):
+    # Get topic, checking for 'type' as an alternative if 'topic' is not present
+    topic = request.query_params.get("topic")
+    if not topic:
+        topic = request.query_params.get("type")
+
+    # Get resource ID, checking 'id' first, then 'data.id'
+    resource_id = request.query_params.get("id")
+    if not resource_id:
+        resource_id = request.query_params.get("data.id")
+
+    _log(f"Recebido topic: {topic}, Resource ID: {resource_id}")
+
+    if not topic or not resource_id:
+        _log(f"ERRO: 'topic' ou 'id'/'data.id' ausentes nos query parameters. Topic: {topic}, ID: {resource_id}")
+        return {"status": "error", "message": "Missing parameters"}, 200
+
+    # Determine which SDK to use (production or sandbox)
+    sdk_to_use = None
+    resource_info_dict = None
+    is_sandbox_transaction = False
+
+    # Try fetching with production SDK first
+    if sdk_prod:
+        try:
+            if topic == 'preapproval':
+                resource_info_dict = sdk_prod.preapproval().get(resource_id)
+            elif topic == 'payment':
+                resource_info_dict = sdk_prod.payment().get(resource_id)
+            
+            # Ensure resource_info_dict is not None before accessing 'status'
+            if resource_info_dict and resource_info_dict.get("status") in [200, 201]:
+                sdk_to_use = sdk_prod
+                _log(f"Recurso {resource_id} encontrado com SDK de PRODUÇÃO.")
+            elif resource_info_dict and resource_info_dict.get("status") == 404:
+                _log(f"Recurso {resource_id} NÃO encontrado com SDK de PRODUÇÃO (404). Tentando SANDBOX...")
+            else:
+                # Log the status if it's not 200/201/404 for better debugging
+                status_log = resource_info_dict.get('status') if resource_info_dict else 'None (resource_info_dict is None)'
+                _log(f"Erro inesperado ao buscar recurso {resource_id} com SDK de PRODUÇÃO. Status: {status_log}. Tentando SANDBOX...")
+        except requests.exceptions.RequestException as e: # Catch RequestException for network/HTTP errors
+            if hasattr(e, 'response') and e.response.status_code == 404:
+                _log(f"RequestException (404) ao buscar recurso {resource_id} com SDK de PRODUÇÃO. Tentando SANDBOX...")
+            else:
+                _log(f"RequestException ao buscar recurso {resource_id} com SDK de PRODUÇÃO: {e}. Tentando SANDBOX...")
+        except Exception as e: # Catch general Exception for other SDK errors
+            _log(f"Erro genérico ao buscar recurso {resource_id} com SDK de PRODUÇÃO: {e}. Tentando SANDBOX...")
+
+    # If not found with production, try with sandbox SDK
+    if not sdk_to_use and sdk_test:
+        try:
+            if topic == 'preapproval':
+                resource_info_dict = sdk_test.preapproval().get(resource_id)
+            elif topic == 'payment':
+                resource_info_dict = sdk_test.payment().get(resource_id)
+            
+            # Ensure resource_info_dict is not None before accessing 'status'
+            if resource_info_dict and resource_info_dict.get("status") in [200, 201]:
+                sdk_to_use = sdk_test
+                is_sandbox_transaction = True
+                _log(f"Recurso {resource_id} encontrado com SDK de TESTE.")
+            elif resource_info_dict and resource_info_dict.get("status") == 404:
+                _log(f"Recurso {resource_id} NÃO encontrado com SDK de TESTE (404).")
+            else:
+                # Log the status if it's not 200/201/404 for better debugging
+                status_log = resource_info_dict.get('status') if resource_info_dict else 'None (resource_info_dict is None)'
+                _log(f"Erro inesperado ao buscar recurso {resource_id} com SDK de TESTE. Status: {status_log}.")
+        except requests.exceptions.RequestException as e: # Catch RequestException for network/HTTP errors
+            if hasattr(e, 'response') and e.response.status_code == 404:
+                _log(f"RequestException (404) ao buscar recurso {resource_id} com SDK de TESTE.")
+            else:
+                _log(f"RequestException ao buscar recurso {resource_id} com SDK de TESTE: {e}.")
+        except Exception as e: # Catch general Exception for other SDK errors
+            _log(f"Erro genérico ao buscar recurso {resource_id} com SDK de TESTE: {e}.")
+
+    if not sdk_to_use:
+        _log(f"ERRO: Recurso {resource_id} não encontrado com nenhum SDK (Produção ou Teste). Notificação não processada.")
+        send_discord_notification(f"⚠️ ERRO no Webhook MP! ⚠️\nRecurso '{resource_id}' (Tópico: '{topic}') NÃO ENCONTRADO com nenhum SDK (Produção/Teste). Verifique tokens e IDs.", success=False)
+        return {"status": "error", "message": "Resource not found with any SDK"}, 200
+
+    # Now process the notification using the correct SDK instance
+    try:
+        if topic == 'preapproval':
+            preapproval_data = resource_info_dict.get("response", {})
+            mp_status = preapproval_data.get("status")
+            payer_email = preapproval_data.get("payer_email")
+            external_reference = preapproval_data.get("external_reference")
+            preapproval_mp_id = preapproval_data.get("id")
+
+            _log(f"Assinatura MP ID: {preapproval_mp_id}, Status MP: {mp_status}, Payer: {payer_email}, External Ref: {external_reference} (Sandbox: {is_sandbox_transaction})")
+
+            if not external_reference:
+                _log(f"ERRO: External Reference não encontrado na notificação da assinatura {preapproval_mp_id}.")
+                send_discord_notification(f"Webhook de Assinatura Recebido SEM External Reference para MP ID {preapproval_mp_id}, Payer: {payer_email}. Impossível processar.", success=False)
+                return {"status": "error", "message": "External reference missing in notification"}, 200
+
+            # --- RECUPERAÇÃO DE DADOS DO ALUNO ---
+            # Para produção, você buscaria esses dados de um banco de dados persistente.
+            # Para sandbox, vamos tentar recuperar do PENDING_ENROLLMENTS do sandbox_matricular.
+            student_data_for_cadastrar = {
+                "nome": "Nome Desconhecido (via Webhook)",
+                "whatsapp": "00000000000",
+                "email": payer_email,
+                "cursos": ["Curso Padrão (via Webhook)"]
+            }
+
+            if is_sandbox_transaction:
+                try:
+                    from sandbox_matricular import PENDING_ENROLLMENTS as SANDBOX_PENDING_ENROLLMENTS
+                    pending_data = SANDBOX_PENDING_ENROLLMENTS.get(external_reference)
+                    if pending_data:
+                        student_data_for_cadastrar = {
+                            "nome": pending_data.get("nome"),
+                            "whatsapp": pending_data.get("whatsapp"),
+                            "email": pending_data.get("email"),
+                            "cursos": pending_data.get("cursos_nomes")
+                        }
+                        _log(f"Dados do aluno recuperados de PENDING_ENROLLMENTS (Sandbox) para {external_reference}.")
+                    else:
+                        _log(f"AVISO: Dados de matrícula pendente NÃO encontrados em PENDING_ENROLLMENTS (Sandbox) para {external_reference}. Usando dados genéricos.")
+                except ImportError:
+                    _log("AVISO: Não foi possível importar PENDING_ENROLLMENTS de sandbox_matricular. Certifique-se de que o ambiente de teste está configurado corretamente.")
+                except Exception as e:
+                    _log(f"ERRO ao tentar recuperar dados de PENDING_ENROLLMENTS (Sandbox): {e}")
+            else:
+                _log(f"INFO: Transação de PRODUÇÃO. Dados do aluno para {external_reference} devem ser buscados de um banco de dados persistente.")
+                # TODO: Implementar busca em banco de dados para produção aqui
+                # student_data_for_cadastrar = your_production_db_lookup(external_reference)
+
+
+            if mp_status == 'authorized':
+                _log(f"Assinatura AUTORIZADA para external_ref: {external_reference}. Chamando endpoint /cadastrar...")
+                call_cadastrar_endpoint(student_data_for_cadastrar, external_reference, is_sandbox_transaction)
+            
+            elif mp_status == 'pending':
+                _log(f"Assinatura PENDENTE para external_ref: {external_reference} (Payer: {payer_email}).")
+                send_discord_notification(f"⏳ Assinatura PENDENTE no MP para {payer_email} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.\nAguardando autorização/compensação.", success=True)
+                
+            elif mp_status == 'paused':
+                _log(f"Assinatura PAUSADA para external_ref: {external_reference} (Payer: {payer_email}).")
+                send_discord_notification(f"⏸️ Assinatura PAUSADA no MP para {payer_email} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=True) 
+
+            elif mp_status == 'cancelled':
+                _log(f"Assinatura CANCELADA para external_ref: {external_reference} (Payer: {payer_email}).")
+                send_discord_notification(f"❌ Assinatura CANCELADA no MP para {payer_email} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=False)
+                
+            else:
+                _log(f"Assinatura com status MP '{mp_status}' para external_reference: {external_reference} (Payer: {payer_email}).")
+                send_discord_notification(f"ℹ️ Status da Assinatura MP: '{mp_status}' para {payer_email} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=False)
+
+
+        # Tópico 'payment' para pagamentos avulsos ou recorrentes
+        elif topic == 'payment':
+            payment_data = resource_info_dict.get("response", {})
+            mp_status = payment_data.get("status")
+            payer_email = payment_data.get("payer", {}).get("email")
+            external_reference = payment_data.get("external_reference")
+            mp_payment_id = payment_data.get("id")
+            transaction_amount = payment_data.get("transaction_amount")
+            
+            _log(f"Pagamento MP ID: {mp_payment_id}, Status MP: {mp_status}, Payer: {payer_email}, External Ref: {external_reference}, Valor: {transaction_amount} (Sandbox: {is_sandbox_transaction})")
+
+            # --- RECUPERAÇÃO DE DADOS DO ALUNO PARA PAGAMENTO ---
+            # Similar ao preapproval, buscar dados do aluno se o external_reference for usado.
+            student_data_for_cadastrar = {
+                "nome": "Nome Desconhecido (via Webhook)",
+                "whatsapp": "00000000000",
+                "email": payer_email,
+                "cursos": ["Curso Padrão (via Webhook)"]
+            }
+            if is_sandbox_transaction:
+                try:
+                    from sandbox_matricular import PENDING_ENROLLMENTS as SANDBOX_PENDING_ENROLLMENTS
+                    pending_data = SANDBOX_PENDING_ENROLLMENTS.get(external_reference)
+                    if pending_data:
+                        student_data_for_cadastrar = {
+                            "nome": pending_data.get("nome"),
+                            "whatsapp": pending_data.get("whatsapp"),
+                            "email": pending_data.get("email"),
+                            "cursos": pending_data.get("cursos_nomes")
+                        }
+                        _log(f"Dados do aluno recuperados de PENDING_ENROLLMENTS (Sandbox) para {external_reference} (Pagamento).")
+                    else:
+                        _log(f"AVISO: Dados de matrícula pendente NÃO encontrados em PENDING_ENROLLMENTS (Sandbox) para {external_reference} (Pagamento). Usando dados genéricos.")
+                except ImportError:
+                    _log("AVISO: Não foi possível importar PENDING_ENROLLMENTS de sandbox_matricular para pagamento. Certifique-se de que o ambiente de teste está configurado corretamente.")
+                except Exception as e:
+                    _log(f"ERRO ao tentar recuperar dados de PENDING_ENROLLMENTS (Sandbox) para pagamento: {e}")
+            else:
+                _log(f"INFO: Transação de PRODUÇÃO. Dados do aluno para {external_reference} (Pagamento) devem ser buscados de um banco de dados persistente.")
+                # TODO: Implementar busca em banco de dados para produção aqui
+            
+            # Se o pagamento foi aprovado, chamar o endpoint /cadastrar
+            if mp_status == 'approved':
+                _log(f"Pagamento APROVADO para external_ref: {external_reference}. Chamando endpoint /cadastrar...")
+                call_cadastrar_endpoint(student_data_for_cadastrar, external_reference, is_sandbox_transaction)
+            else:
+                send_discord_notification(
+                    f"💰 Webhook de Pagamento MP Recebido! 💰\n"
+                    f"ID Pagamento MP: {mp_payment_id}\n"
+                    f"Status: `{mp_status}`\n"
+                    f"Valor: R$ {transaction_amount:.2f}\n"
+                    f"Pagador: {payer_email}\n"
+                    f"Ref. Externa: {external_reference or 'N/A'}",
+                    success=(mp_status == 'approved')
+                )
+
+        else:
+            _log(f"Tópico desconhecido ou não tratado: {topic}. Resource ID: {resource_id}. Ignorando.")
+            send_discord_notification(f"❓ Webhook MP com Tópico Desconhecido: '{topic}' (ID Recurso: {resource_id}). Ignorado.", success=False)
+
+        return {"status": "success", "message": "Webhook notification processed."}, 200
+
+    except requests.exceptions.RequestException as e: # Catch RequestException for network/HTTP errors
+        _log(f"ERRO no Webhook MP (RequestException): {e} - ID Recurso: {resource_id}, Tópico: {topic}")
+        send_discord_notification(f"⚠️ ERRO GRAVE no Webhook MP (Conexão)! ⚠️\nErro: {str(e)}\nID Recurso: {resource_id}\nTópico: {topic}", success=False)
+        return {"status": "error", "message": f"Network error processing webhook: {str(e)}"}, 200
+    except Exception as e: # Catch general Exception for other errors
+        _log(f"ERRO GERAL INESPERADO ao processar webhook: {str(e)} (Tipo: {type(e)}) - ID Recurso: {resource_id}, Tópico: {topic}")
+        send_discord_notification(f"⚠️ ERRO INTERNO GRAVE no Webhook MP! ⚠️\nErro: {str(e)}\nID Recurso: {resource_id}\nTópico: {topic}", success=False)
+        return {"status": "error", "message": f"Internal error processing webhook: {str(e)}"}, 200
+
+
+# ──────────────────────────────────────────────────────────
+# Endpoint de Retorno do Pagamento (Opcional, para feedback imediato ao usuário)
+# ──────────────────────────────────────────────────────────
+@router.get("/pagamento-status") # Este endpoint é chamado pelo redirect do MP (back_url)
+async def pagamento_status_redirect(request: Request):
+    """
+    Endpoint para onde o Mercado Pago redireciona o usuário após a tentativa de pagamento/assinatura.
+    Este é um feedback IMEDIATO ao usuário na interface dele.
+    O status FINAL e a lógica de matrícula são tratados pelo WEBHOOK.
+    """
+    preapproval_id = request.query_params.get("preapproval_id") # ID da assinatura no MP
+    external_reference = request.query_params.get("external_reference") # Nosso ID
+    collection_status = request.query_params.get("collection_status") # Status da coleção (para pagamentos únicos)
+    payment_id = request.query_params.get("payment_id") # ID do pagamento (para pagamentos únicos)
+
+    _log(f"Usuário redirecionado. Preapproval ID: {preapproval_id}, External Ref: {external_reference}, Payment ID: {payment_id}, Collection Status: {collection_status}. Query Params: {request.query_params}")
+
+    message = f"Obrigado! Sua solicitação de pagamento foi enviada."
+    sub_message = "Você receberá uma notificação por e-mail assim que o status for confirmado. Acompanhe também pelo seu painel do Mercado Pago."
+
+    # Tentar buscar dados da matrícula pendente para personalizar a mensagem
+    # ATENÇÃO: Importar PENDING_ENROLLMENTS de `sandbox_matricular` para fins de teste.
+    # Em produção, você buscaria esses dados de um banco de dados persistente.
+    from sandbox_matricular import PENDING_ENROLLMENTS as SANDBOX_PENDING_ENROLLMENTS
+    pending_data = SANDBOX_PENDING_ENROLLMENTS.get(external_reference)
+
+    if pending_data:
+        nome_aluno = pending_data.get("nome", "Aluno(a)")
+        message = f"Olá {nome_aluno}, obrigado! Sua solicitação de pagamento foi enviada ao Mercado Pago."
+        
+        if collection_status == 'approved':
+            sub_message = "Seu pagamento foi aprovado! Estamos processando sua matrícula."
+        elif collection_status == 'pending':
+            sub_message = "Seu pagamento está pendente de aprovação. Aguarde a confirmação."
+        elif collection_status == 'rejected':
+            sub_message = "Seu pagamento foi recusado. Por favor, tente novamente ou utilize outro método."
+        
+    
+    return {
+        "title": "Processando Pagamento",
+        "message": message,
+        "sub_message": sub_message,
+        "mp_preapproval_id": preapproval_id,
+        "mp_payment_id": payment_id,
+        "your_reference_id": external_reference,
+        "important_note": "A confirmação final da sua matrícula e o status do pagamento serão enviados por e-mail e processados em segundo plano."
+    }
+a
