@@ -203,10 +203,13 @@ def _cadastrar_aluno_om(
 def _send_whatsapp_chatpro(
     nome: str,
     whatsapp: str,
-    cursos_nomes: List[str]
+    cursos_nomes: List[str],
+    cpf: str,
+    senha_padrao: str = "123456"
 ) -> None:
     """
-    Envia mensagem automática no WhatsApp via ChatPro, com boas-vindas e informações de acesso.
+    Envia mensagem automática no WhatsApp via ChatPro, com boas-vindas,
+    informações de cursos e credenciais de acesso (CPF e senha).
     """
     if not all([CHATPRO_TOKEN, CHATPRO_URL]):
         _log("⚠️ Variáveis de ambiente do ChatPro não configuradas. Pulando envio de WhatsApp.")
@@ -215,13 +218,15 @@ def _send_whatsapp_chatpro(
     # Garante que o número seja somente dígitos (sem parênteses, espaços ou traços)
     numero_telefone = "".join(filter(str.isdigit, whatsapp))
 
-    # Monta a mensagem com emojis
+    # Monta a mensagem com emojis e credenciais
     cursos_texto = "\n".join(f"• {c}" for c in cursos_nomes) if cursos_nomes else "Nenhum curso específico."
     mensagem = (
         f"👋 Olá, {nome}!\n\n"
         f"🎉 Seja bem-vindo(a) ao CED BRASIL!\n\n"
-        f"📚 Curso adquirido:\n"
+        f"📚 Curso(s) adquirido(s):\n"
         f"{cursos_texto}\n\n"
+        f"🔐 Seu login: {cpf}\n"
+        f"🔑 Sua senha: {senha_padrao}\n\n"
         f"🌐 Portal do Aluno: https://ead.cedbrasilia.com.br\n"
         f"🤖 APP Android: https://play.google.com/store/apps/datasafety?id=br.com.om.app&hl=pt_BR\n"
         f"🍎 APP iOS: https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
@@ -300,7 +305,6 @@ def _send_discord_log(
     except Exception as e:
         _log(f"[DISCORD] Erro inesperado ao enviar log: {str(e)}")
 
-
 @router.post("/", summary="Cadastra (e opcionalmente matricula) um aluno na OM e envia WhatsApp via ChatPro")
 async def realizar_matricula(dados: dict):
     """
@@ -343,8 +347,8 @@ async def realizar_matricula(dados: dict):
         # 2) cadastra aluno e matricula
         aluno_id, cpf = _cadastrar_aluno_om(nome, whatsapp, email, cursos_ids, token_unit)
 
-        # 3) envia mensagem automática no WhatsApp via ChatPro
-        _send_whatsapp_chatpro(nome, whatsapp, cursos_nomes)
+        # 3) envia mensagem automática no WhatsApp via ChatPro (agora com login e senha)
+        _send_whatsapp_chatpro(nome, whatsapp, cursos_nomes, cpf)
 
         # 4) envia log para o Discord informando sucesso na matrícula
         _send_discord_log(nome, cpf, whatsapp, cursos_ids)
