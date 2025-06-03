@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 import requests
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
-from cursos import CURSOS_OM  # Importa o dicionário de mapeamento
+from cursos import cursos  # Importa o dicionário de mapeamento
 import json # Importar json para serializar o payload do ChatPro
 
 router = APIRouter()
@@ -19,7 +19,7 @@ CHATPRO_URL = os.getenv("CHATPRO_URL")
 CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
 
 # Prefixo para gerar CPFs sequenciais na OM
-CPF_PREFIXO = "20254158"
+CPF_PREFIXO = "22254158"
 cpf_lock = threading.Lock()
 
 
