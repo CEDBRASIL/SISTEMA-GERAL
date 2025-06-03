@@ -9,11 +9,10 @@ import threading
 from typing import List, Tuple, Optional, Dict
 import requests
 from fastapi import APIRouter, HTTPException, Request
-from datetime import datetime
+from datetime import datetime, timezone # Adicionado timezone
 import uuid # Para gerar IDs únicos para as matrículas pendentes
 from cursos import CURSOS_OM # Presumo que CURSOS_OM esteja definido em cursos.py
 import mercadopago # Importar o SDK do Mercado Pago
-# A importação 'from mercadopago.exceptions import MPException' foi removida pois causa ModuleNotFoundError com mercadopago-2.3.0
 
 import json # Para lidar com JSON da resposta da API Gemini
 
@@ -26,7 +25,7 @@ OM_BASE = os.getenv("OM_BASE")
 BASIC_B64 = os.getenv("BASIC_B64")
 UNIDADE_ID = os.getenv("UNIDADE_ID")
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
-MP_PREAPPROVAL_PLAN_ID = os.getenv("MP_PREAPPROVAL_PLAN_ID")
+# MP_PREAPPROVAL_PLAN_ID = os.getenv("MP_PREAPPROVAL_PLAN_ID") # Não será mais usado para este fluxo
 THANK_YOU_PAGE_URL = os.getenv("THANK_YOU_PAGE_URL")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
@@ -254,26 +253,24 @@ def matricular_aluno_final(nome:str, whatsapp:str, email:Optional[str], cursos_n
 async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado request para obter base_url
     nome = body.get("nome")
     whatsapp = body.get("whatsapp")
-    email = body.get("email", "") # Email é usado no payer_email do MP, importante
+    email = body.get("email", "") 
     cursos_nomes = body.get("cursos", [])
     
     if not nome or not whatsapp or not cursos_nomes:
         _log(f"Dados inválidos para iniciar matrícula: Nome='{nome}', WhatsApp='{whatsapp}', Cursos='{cursos_nomes}'")
         raise HTTPException(400, detail="Nome, whatsapp e pelo menos um curso são obrigatórios.")
     
-    if not email: # Mercado Pago requer um email para o pagador
+    if not email: 
         _log("AVISO: Email não fornecido. Usando placeholder para Mercado Pago.")
-        # Usar um email placeholder mais robusto ou exigir email no frontend
         timestamp_uuid = uuid.uuid4().hex[:8]
         email = f"user_{timestamp_uuid}@placeholder.ced.com"
 
-
     curso_principal_nome = cursos_nomes[0] if cursos_nomes else "Matrícula Curso Online"
     
-    if not MP_PREAPPROVAL_PLAN_ID:
-        _log("ERRO CRÍTICO: MP_PREAPPROVAL_PLAN_ID não configurado no ambiente.")
-        raise HTTPException(500, detail="Configuração de pagamento indisponível (PLAN_ID).")
-    if not THANK_YOU_PAGE_URL: # URL de retorno após pagamento
+    # if not MP_PREAPPROVAL_PLAN_ID: # Não é mais necessário
+    #     _log("ERRO CRÍTICO: MP_PREAPPROVAL_PLAN_ID não configurado no ambiente.")
+    #     raise HTTPException(500, detail="Configuração de pagamento indisponível (PLAN_ID).")
+    if not THANK_YOU_PAGE_URL: 
         _log("ERRO CRÍTICO: THANK_YOU_PAGE_URL não configurada no ambiente.")
         raise HTTPException(500, detail="Configuração de pagamento indisponível (RETURN_URL).")
 
@@ -295,17 +292,33 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
         notification_url = f"{base_url.rstrip('/')}/api/webhook/mercadopago"
         _log(f"URL de notificação para MP configurada como: {notification_url}")
 
+        # --- MODIFICAÇÃO PARA ASSINATURA DINÂMICA ---
+        # Data de início da cobrança (ex: agora mesmo)
+        # O Mercado Pago pode exigir que a data de início seja um pouco no futuro.
+        # Por simplicidade, vamos tentar omitir start_date e end_date inicialmente.
+        # Se o MP exigir, podemos adicionar:
+        # start_date_iso = datetime.now(timezone.utc).isoformat(timespec='milliseconds')
+        # end_date_iso = (datetime.now(timezone.utc) + timedelta(days=365*2)).isoformat(timespec='milliseconds') # Ex: 2 anos
 
         preapproval_data = {
-            "reason": f"Assinatura: {curso_principal_nome}",
-            "preapproval_plan_id": MP_PREAPPROVAL_PLAN_ID,
+            "reason": f"Assinatura Mensal: {curso_principal_nome}", # Motivo da assinatura
             "payer_email": email, 
             "back_url": THANK_YOU_PAGE_URL, 
             "external_reference": pending_enrollment_id, 
-            "notification_url": notification_url 
+            "notification_url": notification_url,
+            "auto_recurring": {
+                "frequency": 1,                 # Cobrar 1 vez
+                "frequency_type": "months",     # a cada 'months' (mês)
+                "transaction_amount": 49.90,    # Valor da cobrança
+                "currency_id": "BRL"            # Moeda (Real Brasileiro)
+                # "start_date": start_date_iso, # Opcional: Data de início da cobrança
+                # "end_date": end_date_iso,     # Opcional: Data de término da assinatura
+            }
+            # Removido: "preapproval_plan_id": MP_PREAPPROVAL_PLAN_ID,
         }
+        # --- FIM DA MODIFICAÇÃO ---
         
-        _log(f"Criando assinatura MP com dados: {preapproval_data}")
+        _log(f"Criando assinatura MP DINÂMICA com dados: {preapproval_data}")
         preapproval_response_dict = sdk_matricular.preapproval().create(preapproval_data)
         
         if preapproval_response_dict and preapproval_response_dict.get("status") == 201: 
@@ -318,7 +331,7 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
                 PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
                 raise HTTPException(500, detail="Falha ao obter dados da criação da assinatura MP.")
 
-            _log(f"Assinatura MP criada (ID: {mp_preapproval_id}). Redirect: {init_point}")
+            _log(f"Assinatura MP DINÂMICA criada (ID: {mp_preapproval_id}). Redirect: {init_point}")
             PENDING_ENROLLMENTS[pending_enrollment_id]["mp_preapproval_id"] = mp_preapproval_id
             
             return {
@@ -330,7 +343,7 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
         else:
             error_details = preapproval_response_dict.get('response', preapproval_response_dict) if preapproval_response_dict else "Resposta vazia"
             status_code = preapproval_response_dict.get('status', 'N/A') if preapproval_response_dict else 'N/A'
-            _log(f"Erro ao criar assinatura MP: Status {status_code} - Detalhes: {error_details}")
+            _log(f"Erro ao criar assinatura MP DINÂMICA: Status {status_code} - Detalhes: {error_details}")
             PENDING_ENROLLMENTS.pop(pending_enrollment_id, None)
             
             mp_error_message = "Falha ao iniciar o pagamento com Mercado Pago."
@@ -343,13 +356,9 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
                      elif isinstance(first_cause, str): 
                          mp_error_message = first_cause
 
-
             raise HTTPException(status_code= int(status_code) if str(status_code).isdigit() else 500, detail=mp_error_message)
 
-    # CORREÇÃO APLICADA AQUI:
-    # Capturar exceção de forma mais genérica e tentar extrair informações.
     except Exception as mp_e: 
-        # Verificar se é uma exceção do Mercado Pago pela presença de atributos comuns
         is_mp_exception = hasattr(mp_e, 'status_code') and hasattr(mp_e, 'message')
         
         if is_mp_exception:
@@ -370,7 +379,6 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
                 PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
             raise HTTPException(status_code=http_status_code, detail=error_detail)
         else:
-            # Se não for uma exceção do MP reconhecida, trata como erro geral.
             _log(f"Erro GERAL em endpoint_iniciar_matricula: {str(mp_e)} (Tipo: {type(mp_e)})")
             if pending_enrollment_id in PENDING_ENROLLMENTS: 
                 PENDING_ENROLLMENTS.pop(pending_enrollment_id, None)
