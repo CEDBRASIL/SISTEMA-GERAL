@@ -179,12 +179,12 @@ async def mercadopago_webhook(request: Request):
                 _log(f"Recurso {resource_id} NÃO encontrado com SDK de PRODUÇÃO (404). Tentando SANDBOX...")
             else:
                 _log(f"Erro inesperado ao buscar recurso {resource_id} com SDK de PRODUÇÃO. Status: {resource_info_dict.get('status')}. Tentando SANDBOX...")
-        except mercadopago.exceptions.MPException as e:
-            if e.status_code == 404:
-                _log(f"MPException (404) ao buscar recurso {resource_id} com SDK de PRODUÇÃO. Tentando SANDBOX...")
+        except requests.exceptions.RequestException as e: # Catch RequestException for network/HTTP errors
+            if hasattr(e, 'response') and e.response.status_code == 404:
+                _log(f"RequestException (404) ao buscar recurso {resource_id} com SDK de PRODUÇÃO. Tentando SANDBOX...")
             else:
-                _log(f"MPException ao buscar recurso {resource_id} com SDK de PRODUÇÃO: {e}. Tentando SANDBOX...")
-        except Exception as e:
+                _log(f"RequestException ao buscar recurso {resource_id} com SDK de PRODUÇÃO: {e}. Tentando SANDBOX...")
+        except Exception as e: # Catch general Exception for other SDK errors
             _log(f"Erro genérico ao buscar recurso {resource_id} com SDK de PRODUÇÃO: {e}. Tentando SANDBOX...")
 
     # If not found with production, try with sandbox SDK
@@ -203,12 +203,12 @@ async def mercadopago_webhook(request: Request):
                 _log(f"Recurso {resource_id} NÃO encontrado com SDK de TESTE (404).")
             else:
                 _log(f"Erro inesperado ao buscar recurso {resource_id} com SDK de TESTE. Status: {resource_info_dict.get('status')}.")
-        except mercadopago.exceptions.MPException as e:
-            if e.status_code == 404:
-                _log(f"MPException (404) ao buscar recurso {resource_id} com SDK de TESTE.")
+        except requests.exceptions.RequestException as e: # Catch RequestException for network/HTTP errors
+            if hasattr(e, 'response') and e.response.status_code == 404:
+                _log(f"RequestException (404) ao buscar recurso {resource_id} com SDK de TESTE.")
             else:
-                _log(f"MPException ao buscar recurso {resource_id} com SDK de TESTE: {e}.")
-        except Exception as e:
+                _log(f"RequestException ao buscar recurso {resource_id} com SDK de TESTE: {e}.")
+        except Exception as e: # Catch general Exception for other SDK errors
             _log(f"Erro genérico ao buscar recurso {resource_id} com SDK de TESTE: {e}.")
 
     if not sdk_to_use:
@@ -349,11 +349,11 @@ async def mercadopago_webhook(request: Request):
 
         return {"status": "success", "message": "Webhook notification processed."}, 200
 
-    except mercadopago.exceptions.MPException as mp_e:
-        _log(f"ERRO no SDK do Mercado Pago (MPException): Status {mp_e.status_code} - Mensagem: {mp_e.message} - Causa: {mp_e.cause} - ID Recurso: {resource_id}")
-        send_discord_notification(f"⚠️ ERRO GRAVE no Webhook MP (SDK)! ⚠️\nErro ao processar notificação.\nStatus MP SDK: {mp_e.status_code}\nMensagem: {mp_e.message}\nID Recurso: {resource_id}\nTópico: {topic}", success=False)
-        return {"status": "error", "message": f"SDK error processing webhook: {mp_e.message}"}, 200
-    except Exception as e:
+    except requests.exceptions.RequestException as e: # Catch RequestException for network/HTTP errors
+        _log(f"ERRO no Webhook MP (RequestException): {e} - ID Recurso: {resource_id}, Tópico: {topic}")
+        send_discord_notification(f"⚠️ ERRO GRAVE no Webhook MP (Conexão)! ⚠️\nErro: {str(e)}\nID Recurso: {resource_id}\nTópico: {topic}", success=False)
+        return {"status": "error", "message": f"Network error processing webhook: {str(e)}"}, 200
+    except Exception as e: # Catch general Exception for other errors
         _log(f"ERRO GERAL INESPERADO ao processar webhook: {str(e)} (Tipo: {type(e)}) - ID Recurso: {resource_id}, Tópico: {topic}")
         send_discord_notification(f"⚠️ ERRO INTERNO GRAVE no Webhook MP! ⚠️\nErro: {str(e)}\nID Recurso: {resource_id}\nTópico: {topic}", success=False)
         return {"status": "error", "message": f"Internal error processing webhook: {str(e)}"}, 200
