@@ -309,7 +309,7 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
                 "failure": thank_you_url_final, 
                 "pending": thank_you_url_final   
             },
-            "auto_return": "approved_only", # Adicionado para auto-retorno se o pagamento for aprovado
+            "auto_return": "approved", # Corrigido de "approved_only" para "approved"
             "statement_descriptor": "CED Educ" # Ajustado para o limite de caracteres comum em preferências (geralmente 10)
         }
         # --- FIM DOS DADOS PARA PREFERÊNCIA DE CHECKOUT ---
