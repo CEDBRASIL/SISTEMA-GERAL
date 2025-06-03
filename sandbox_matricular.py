@@ -197,8 +197,8 @@ def _cadastrar_aluno(nome:str, whatsapp:str, email:str, cursos_ids:List[int], to
             _log(f"Erro de conexão SANDBOX ao cadastrar aluno: {e}")
             break 
         except ValueError: 
-             _log(f"Resposta inválida (não JSON) SANDBOX ao cadastrar aluno: {r.text if 'r' in locals() else 'N/A'}")
-             break
+            _log(f"Resposta inválida (não JSON) SANDBOX ao cadastrar aluno: {r.text if 'r' in locals() else 'N/A'}")
+            break
 
     _log(f"Não foi possível cadastrar/matricular o aluno {nome} (Sandbox) após tentativas.")
     raise RuntimeError("Falha ao cadastrar/matricular aluno no sistema OM (Sandbox) após tentativas.")
@@ -287,69 +287,75 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
         notification_url = f"{base_url.rstrip('/')}{notification_url_path}"
         _log(f"URL de notificação SANDBOX para MP (Pagamento Único) configurada como: {notification_url}")
 
-        # --- DADOS PARA PAGAMENTO ÚNICO ---
-        payment_data = {
-            "transaction_amount": 49.90,
-            "description": f"Pagamento Único SANDBOX: {curso_principal_nome}",
+        # --- DADOS PARA PREFERÊNCIA DE CHECKOUT ---
+        # Alterado de "payment_data" para "preference_data" e ajustado para a API de Preferências
+        preference_data = {
+            "items": [
+                {
+                    "title": f"Pagamento Único SANDBOX: {curso_principal_nome}",
+                    "quantity": 1,
+                    "unit_price": 49.90,
+                }
+            ],
             "payer": {
                 "email": email,
-                # Opcional: adicionar nome e sobrenome se a API do MP permitir/recomendar para pagamentos
-                # "first_name": nome.split(" ")[0] if nome else None,
-                # "last_name": " ".join(nome.split(" ")[1:]) if nome and " " in nome else None,
+                "name": nome.split(" ")[0] if nome else None,
+                "surname": " ".join(nome.split(" ")[1:]) if nome and " " in nome else None,
             },
             "external_reference": pending_enrollment_id,
             "notification_url": notification_url,
             "back_urls": { 
                 "success": thank_you_url_final,
                 "failure": thank_you_url_final, 
-                "pending": thank_you_url_final  
+                "pending": thank_you_url_final   
             },
-            # "payment_method_id": "pix", # Opcional: para forçar um método ou deixar o usuário escolher no checkout
-            # "installments": 1, # Opcional
-            "statement_descriptor": "CED Educação" # O que aparece na fatura do cartão (máx 10-13 chars, depende do emissor)
+            "auto_return": "approved_only", # Adicionado para auto-retorno se o pagamento for aprovado
+            "statement_descriptor": "CED Educ" # Ajustado para o limite de caracteres comum em preferências (geralmente 10)
         }
-        # --- FIM DOS DADOS PARA PAGAMENTO ÚNICO ---
+        # --- FIM DOS DADOS PARA PREFERÊNCIA DE CHECKOUT ---
         
-        _log(f"Criando Pagamento Único MP (SANDBOX) com dados: {payment_data}")
-        payment_response_dict = sdk_matricular_sandbox.payment().create(payment_data)
+        _log(f"Criando Preferência de Pagamento MP (SANDBOX) com dados: {preference_data}")
+        # Alterado de .payment().create() para .preference().create()
+        preference_response_dict = sdk_matricular_sandbox.preference().create(preference_data)
         
-        _log(f"RESPOSTA COMPLETA DO MP SANDBOX (Pagamento Único): {payment_response_dict}")
+        _log(f"RESPOSTA COMPLETA DO MP SANDBOX (Preferência de Pagamento): {preference_response_dict}")
         
-        if payment_response_dict and payment_response_dict.get("status") == 201: # 201 Created para pagamentos
-            response_data = payment_response_dict.get("response", {})
+        # O status para criação de preferência é 201 Created
+        if preference_response_dict and preference_response_dict.get("status") == 201: 
+            response_data = preference_response_dict.get("response", {})
             init_point = response_data.get("sandbox_init_point", response_data.get("init_point"))
-            mp_payment_id = response_data.get("id") # ID do pagamento
-
-            if not init_point or not mp_payment_id:
-                _log(f"ERRO SANDBOX: init_point/sandbox_init_point ou ID do pagamento ausentes na resposta do MP: {response_data}")
+            mp_preference_id = response_data.get("id") # ID da preferência
+            
+            if not init_point or not mp_preference_id:
+                _log(f"ERRO SANDBOX: init_point/sandbox_init_point ou ID da preferência ausentes na resposta do MP: {response_data}")
                 PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
-                raise HTTPException(500, detail="Falha SANDBOX ao obter dados da criação do pagamento MP.")
+                raise HTTPException(500, detail="Falha SANDBOX ao obter dados da criação da preferência MP.")
 
-            _log(f"Pagamento Único MP (SANDBOX) criado (ID: {mp_payment_id}). Redirect: {init_point}")
-            PENDING_ENROLLMENTS[pending_enrollment_id]["mp_payment_id"] = mp_payment_id
+            _log(f"Preferência de Pagamento MP (SANDBOX) criada (ID: {mp_preference_id}). Redirect: {init_point}")
+            PENDING_ENROLLMENTS[pending_enrollment_id]["mp_preference_id"] = mp_preference_id # Armazene o ID da preferência
             
             return {
                 "status": "ok_sandbox_payment",
                 "message": "Pagamento Único SANDBOX iniciado, redirecionando para o checkout de teste.",
                 "redirect_url": init_point,
                 "pending_enrollment_id": pending_enrollment_id,
-                "mp_payment_id": mp_payment_id
+                "mp_preference_id": mp_preference_id # Retorne o ID da preferência
             }
         else:
-            error_details = payment_response_dict.get('response', payment_response_dict) if payment_response_dict else "Resposta vazia"
-            status_code = payment_response_dict.get('status', 'N/A') if payment_response_dict else 'N/A'
-            _log(f"Erro SANDBOX ao criar Pagamento Único MP: Status {status_code} - Detalhes: {error_details}")
-            PENDING_ENROLLMENTS.pop(pending_enrollment_id, None)
+            error_details = preference_response_dict.get('response', preference_response_dict) if preference_response_dict else "Resposta vazia"
+            status_code = preference_response_dict.get('status', 'N/A') if preference_response_dict else 'N/A'
+            _log(f"Erro SANDBOX ao criar Preferência de Pagamento MP: Status {status_code} - Detalhes: {error_details}")
+            PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
             
             mp_error_message = "Falha SANDBOX ao iniciar o pagamento único com Mercado Pago."
             if isinstance(error_details, dict) and error_details.get("message"):
                 mp_error_message = error_details.get("message")
                 if error_details.get("cause") and isinstance(error_details["cause"], list) and len(error_details["cause"]) > 0:
-                     first_cause = error_details["cause"][0]
-                     if isinstance(first_cause, dict) and first_cause.get("description"):
-                         mp_error_message = first_cause.get("description")
-                     elif isinstance(first_cause, str): 
-                         mp_error_message = first_cause
+                    first_cause = error_details["cause"][0]
+                    if isinstance(first_cause, dict) and first_cause.get("description"):
+                        mp_error_message = first_cause.get("description")
+                    elif isinstance(first_cause, str): 
+                        mp_error_message = first_cause
 
             raise HTTPException(status_code= int(status_code) if str(status_code).isdigit() else 500, detail=mp_error_message)
 
@@ -364,7 +370,7 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
             if cause and isinstance(cause, list) and len(cause) > 0 and isinstance(cause[0], dict) and cause[0].get('description'):
                 error_detail = cause[0].get('description')
             elif cause and isinstance(cause, str): 
-                 error_detail = cause
+                error_detail = cause
 
             http_status_code = getattr(mp_e, 'status_code', 500)
             if not isinstance(http_status_code, int):
@@ -426,7 +432,7 @@ async def generate_course_description_sandbox(body: dict):
             if gemini_result and gemini_result.get("error") and gemini_result["error"].get("message"):
                 error_message_gemini = gemini_result["error"]["message"]
             elif gemini_result and gemini_result.get("promptFeedback") and gemini_result["promptFeedback"].get("blockReason"):
-                 error_message_gemini = f"Conteúdo bloqueado pela IA (Sandbox): {gemini_result['promptFeedback']['blockReason']}"
+                error_message_gemini = f"Conteúdo bloqueado pela IA (Sandbox): {gemini_result['promptFeedback']['blockReason']}"
             raise HTTPException(500, detail=error_message_gemini)
 
     except requests.exceptions.Timeout:
@@ -452,4 +458,4 @@ async def generate_course_description_sandbox(body: dict):
     except Exception as e:
         _log(f"Erro geral SANDBOX ao gerar descrição para '{course_name}': {e} (Tipo: {type(e)})")
         raise HTTPException(500, detail=f"Erro interno SANDBOX ao gerar descrição: {e}")
-
+dada
