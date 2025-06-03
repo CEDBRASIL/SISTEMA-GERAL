@@ -1,19 +1,16 @@
 """
-sandbox_matricular.py – TESTE: Prepara o processo de matrícula e pagamento com Mercado Pago (SANDBOX).
-A matrícula final no sistema OM será feita por um endpoint separado (cadastrar.py),
-simulando o fluxo de webhook.
-Inclui endpoint para gerar descrição de curso com Gemini API.
+sandbox_matricular.py – Este arquivo agora é usado para armazenar temporariamente os dados do aluno
+no ambiente de sandbox antes do redirecionamento para o Mercado Pago.
+Ele também mantém o endpoint para gerar descrição de curso com Gemini API.
 """
 
 import os
-import threading
 from typing import List, Tuple, Optional, Dict
 import requests
 from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime, timezone 
 import uuid 
 from cursos import CURSOS_OM # Assume que cursos.py existe
-import mercadopago 
 import json 
 
 router = APIRouter()
@@ -21,29 +18,17 @@ router = APIRouter()
 # ──────────────────────────────────────────────────────────
 # Variáveis de Ambiente (Puxadas via os.getenv)
 # ──────────────────────────────────────────────────────────
-OM_BASE = os.getenv("OM_BASE") # Base URL do sistema OM
-BASIC_B64 = os.getenv("BASIC_B64") # Credenciais Basic Auth para OM
-UNIDADE_ID = os.getenv("UNIDADE_ID") # ID da unidade no sistema OM
-
-# TOKEN DE TESTE DO MERCADO PAGO
-MP_TEST_ACCESS_TOKEN = os.getenv("MP_TEST_ACCESS_TOKEN") 
-
-# URLs de retorno após o pagamento (para sandbox)
-THANK_YOU_PAGE_URL = os.getenv("THANK_YOU_PAGE_URL_SANDBOX", os.getenv("THANK_YOU_PAGE_URL")) 
-
-# Chave da API Gemini (pode ser a mesma, com valor padrão)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "") 
 
 # URL do Webhook do Discord para logs de eventos (colocado diretamente no código conforme solicitado)
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1377838283975036928/IgVvwyrBBWflKyXbIU9dgH4PhLwozHzrf-nJpj3w7dsZC-Ds9qN8_Toym3Tnbj-3jdU4"
 
 # ──────────────────────────────────────────────────────────
-# Armazenamento Temporário de Matrículas Pendentes
-# ATENÇÃO: Em produção, isso deve ser um banco de dados persistente!
-# `webhook.py` e `pagamento-status` também precisarão acessar esses dados.
+# Armazenamento Temporário de Matrículas Pendentes (CRÍTICO PARA O NOVO FLUXO)
+# ATENÇÃO: Em produção, isso DEVE ser um banco de dados persistente!
+# Esta é uma solução em memória para fins de teste/sandbox.
 # ──────────────────────────────────────────────────────────
 PENDING_ENROLLMENTS: Dict[str, Dict] = {}
-
 
 # ──────────────────────────────────────────────────────────
 # Funções Auxiliares de Logging
@@ -53,24 +38,59 @@ def _log(msg: str):
     print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] [Sandbox Matricular] {msg}")
 
 # ──────────────────────────────────────────────────────────
-# Configuração Mercado Pago SDK (SANDBOX)
+# Configuração Mercado Pago SDK (Não mais usado para criar preferências aqui)
 # ──────────────────────────────────────────────────────────
-sdk_matricular_sandbox = None
-if not MP_TEST_ACCESS_TOKEN:
-    _log("ERRO CRÍTICO SANDBOX: MP_TEST_ACCESS_TOKEN não configurado. A integração com Mercado Pago (Sandbox) NÃO FUNCIONARÁ.")
-    _log("Configure a variável de ambiente MP_TEST_ACCESS_TOKEN com seu token de teste.")
-else:
-    try:
-        sdk_matricular_sandbox = mercadopago.SDK(access_token=MP_TEST_ACCESS_TOKEN)
-        _log("SDK Mercado Pago (Sandbox) inicializado com sucesso.")
-    except Exception as e:
-        _log(f"ERRO CRÍTICO SANDBOX ao inicializar SDK Mercado Pago: {e}. A integração com Mercado Pago (Sandbox) PODE NÃO FUNCIONAR.")
+# sdk_matricular_sandbox = None # Removido, pois não criamos mais preferências aqui.
+
 
 # ──────────────────────────────────────────────────────────
-# Funções de Lógica de Negócio (REMOVIDAS OU SIMPLIFICADAS)
-# A lógica de matrícula OM foi movida para cadastrar.py
+# NOVO ENDPOINT: Armazenar Dados do Aluno Temporariamente
 # ──────────────────────────────────────────────────────────
+@router.post("/store-student-data")
+async def store_student_data(body: dict):
+    nome = body.get("nome")
+    whatsapp = body.get("whatsapp")
+    email = body.get("email", "")
+    cursos_nomes = body.get("cursos", [])
 
+    if not nome or not whatsapp or not cursos_nomes:
+        _log(f"Dados inválidos para armazenar: Nome='{nome}', WhatsApp='{whatsapp}', Cursos='{cursos_nomes}'")
+        raise HTTPException(400, detail="Nome, whatsapp e pelo menos um curso são obrigatórios para armazenar dados.")
+    
+    external_reference = str(uuid.uuid4()) # Gerar um ID único para esta transação
+
+    PENDING_ENROLLMENTS[external_reference] = {
+        "nome": nome,
+        "whatsapp": whatsapp,
+        "email": email,
+        "cursos_nomes": cursos_nomes,
+        "timestamp": datetime.now().isoformat(),
+        "status": "data_stored_pending_mp_redirect"
+    }
+    _log(f"Dados do aluno para {nome} armazenados temporariamente com external_reference: {external_reference}")
+
+    # Enviar notificação para o Discord sobre o armazenamento inicial
+    discord_log_message = (
+        f"📝 **Dados de Aluno Armazenados (SANDBOX)!** 📝\n"
+        f"**Aluno:** {nome}\n"
+        f"**WhatsApp:** {whatsapp}\n"
+        f"**E-mail:** {email}\n"
+        f"**Curso(s):** {', '.join(cursos_nomes)}\n"
+        f"**Ref. Externa (Temp ID):** `{external_reference}`\n"
+        f"Status: `Aguardando redirecionamento para MP`"
+    )
+    _send_discord_message(discord_log_message)
+
+    return {
+        "status": "ok",
+        "message": "Dados do aluno armazenados temporariamente. Use o external_reference para o redirecionamento.",
+        "external_reference": external_reference
+    }
+
+
+# ──────────────────────────────────────────────────────────
+# Funções Auxiliares de Discord
+# ──────────────────────────────────────────────────────────
 def _send_discord_message(message: str):
     """Envia uma mensagem para o webhook do Discord."""
     if not DISCORD_WEBHOOK_URL:
@@ -87,7 +107,7 @@ def _send_discord_message(message: str):
     try:
         _log(f"Enviando mensagem Discord SANDBOX...")
         response = requests.post(DISCORD_WEBHOOK_URL, headers=headers, data=json.dumps(payload), timeout=10)
-        response.raise_for_status() # Levanta um erro para status HTTP 4xx/5xx
+        response.raise_for_status() 
         _log(f"Mensagem Discord SANDBOX enviada com sucesso. Status: {response.status_code}")
     except requests.exceptions.Timeout:
         _log(f"Timeout SANDBOX ao enviar mensagem Discord.")
@@ -97,166 +117,6 @@ def _send_discord_message(message: str):
         _log(f"Erro de conexão SANDBOX ao enviar mensagem Discord: {e}")
     except Exception as e:
         _log(f"Erro inesperado SANDBOX ao enviar mensagem Discord: {e}")
-
-# ──────────────────────────────────────────────────────────
-# Endpoint de Matrícula (Inicia Pagamento ÚNICO MP - SANDBOX)
-# ──────────────────────────────────────────────────────────
-@router.post("/") 
-async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request): 
-    nome = body.get("nome")
-    whatsapp = body.get("whatsapp")
-    email = body.get("email", "") 
-    cursos_nomes = body.get("cursos", [])
-    
-    if not nome or not whatsapp or not cursos_nomes:
-        _log(f"Dados inválidos SANDBOX para iniciar pagamento único: Nome='{nome}', WhatsApp='{whatsapp}', Cursos='{cursos_nomes}'")
-        raise HTTPException(400, detail="Nome, whatsapp e pelo menos um curso são obrigatórios (Sandbox).")
-    
-    if not email: 
-        _log("AVISO SANDBOX: Email não fornecido. Usando placeholder para Mercado Pago.")
-        timestamp_uuid = uuid.uuid4().hex[:8]
-        email = f"user_{timestamp_uuid}@placeholder.ced.sandbox.com" 
-
-    curso_principal_nome = cursos_nomes[0] if cursos_nomes else "Curso Online (Sandbox)" # Ajustado para pagamento único
-    
-    thank_you_url_final = THANK_YOU_PAGE_URL
-    if not thank_you_url_final: 
-        _log("ERRO CRÍTICO SANDBOX: THANK_YOU_PAGE_URL (ou THANK_YOU_PAGE_URL_SANDBOX) não configurada.")
-        raise HTTPException(500, detail="Configuração de pagamento indisponível (RETURN_URL Sandbox).")
-
-    if not sdk_matricular_sandbox:
-        _log("ERRO CRÍTICO SANDBOX: SDK do Mercado Pago (Sandbox) não inicializado.")
-        raise HTTPException(500, detail="Serviço de pagamento indisponível no momento (SDK Error Sandbox).")
-
-    pending_enrollment_id = str(uuid.uuid4()) # Usado como external_reference
-    
-    try:
-        # Armazena os dados do aluno para que o webhook possa recuperá-los
-        PENDING_ENROLLMENTS[pending_enrollment_id] = {
-            "nome": nome, "whatsapp": whatsapp, "email": email,
-            "cursos_nomes": cursos_nomes, "status": "pending_single_payment_sandbox", # Novo status
-            "timestamp": datetime.now().isoformat()
-        }
-        _log(f"Pagamento único pendente SANDBOX ID: {pending_enrollment_id} para {nome} armazenada.")
-
-        base_url = str(request.base_url)
-        # A notification_url para pagamentos únicos é importante para saber o status final.
-        notification_url_path = os.getenv("MP_SANDBOX_NOTIFICATION_PATH", "/api/webhook/mercadopago") 
-        notification_url = f"{base_url.rstrip('/')}{notification_url_path}"
-        _log(f"URL de notificação SANDBOX para MP (Pagamento Único) configurada como: {notification_url}")
-
-        # --- DADOS PARA PREFERÊNCIA DE CHECKOUT ---
-        preference_data = {
-            "items": [
-                {
-                    "title": f"Pagamento Único SANDBOX: {curso_principal_nome}",
-                    "quantity": 1,
-                    "unit_price": 49.90,
-                }
-            ],
-            "payer": {
-                "email": email,
-                "name": nome.split(" ")[0] if nome else None,
-                "surname": " ".join(nome.split(" ")[1:]) if nome and " " in nome else None,
-            },
-            "external_reference": pending_enrollment_id,
-            "notification_url": notification_url,
-            "back_urls": { 
-                "success": thank_you_url_final,
-                "failure": thank_you_url_final, 
-                "pending": thank_you_url_final   
-            },
-            "auto_return": "approved", 
-            "statement_descriptor": "CED Educ" 
-        }
-        # --- FIM DOS DADOS PARA PREFERÊNCIA DE CHECKOUT ---
-        
-        _log(f"Criando Preferência de Pagamento MP (SANDBOX) com dados: {preference_data}")
-        preference_response_dict = sdk_matricular_sandbox.preference().create(preference_data)
-        
-        _log(f"RESPOSTA COMPLETA DO MP SANDBOX (Preferência de Pagamento): {preference_response_dict}")
-        
-        if preference_response_dict and preference_response_dict.get("status") == 201: 
-            response_data = preference_response_dict.get("response", {})
-            init_point = response_data.get("sandbox_init_point", response_data.get("init_point"))
-            mp_preference_id = response_data.get("id") 
-            
-            if not init_point or not mp_preference_id:
-                _log(f"ERRO SANDBOX: init_point/sandbox_init_point ou ID da preferência ausentes na resposta do MP: {response_data}")
-                PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
-                raise HTTPException(500, detail="Falha SANDBOX ao obter dados da criação da preferência MP.")
-
-            _log(f"Preferência de Pagamento MP (SANDBOX) criada (ID: {mp_preference_id}). Redirect: {init_point}")
-            PENDING_ENROLLMENTS[pending_enrollment_id]["mp_preference_id"] = mp_preference_id 
-            
-            # -------------------------------------------------------------
-            # AÇÃO: Enviar log para o Discord Bot (mantido aqui para log da INICIAÇÃO do pagamento)
-            # -------------------------------------------------------------
-            _log("Preparando para enviar log de evento para o Discord (iniciação de pagamento).") 
-            discord_log_message = (
-                f"🎉 **Nova Preferência de Pagamento SANDBOX Criada!** 🎉\n"
-                f"**Aluno (Potencial):** {nome}\n"
-                f"**WhatsApp:** {whatsapp}\n"
-                f"**E-mail:** {email}\n"
-                f"**Curso(s):** {', '.join(cursos_nomes)}\n"
-                f"**Ref. Interna (Pending ID):** `{pending_enrollment_id}`\n"
-                f"**ID Preferência MP:** `{mp_preference_id}`\n"
-                f"**Status MP:** `Preferência Criada (201)`\n"
-                f"**Link Checkout Sandbox:** {init_point}"
-            )
-            _send_discord_message(discord_log_message)
-            # -------------------------------------------------------------
-
-            return {
-                "status": "ok_sandbox_payment",
-                "message": "Pagamento Único SANDBOX iniciado, redirecionando para o checkout de teste.",
-                "redirect_url": init_point,
-                "pending_enrollment_id": pending_enrollment_id,
-                "mp_preference_id": mp_preference_id
-            }
-        else:
-            error_details = preference_response_dict.get('response', preference_response_dict) if preference_response_dict else "Resposta vazia"
-            status_code = preference_response_dict.get('status', 'N/A') if preference_response_dict else 'N/A'
-            _log(f"Erro SANDBOX ao criar Preferência de Pagamento MP: Status {status_code} - Detalhes: {error_details}")
-            PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
-            
-            mp_error_message = "Falha SANDBOX ao iniciar o pagamento único com Mercado Pago."
-            if isinstance(error_details, dict) and error_details.get("message"):
-                mp_error_message = error_details.get("message")
-                if error_details.get("cause") and isinstance(error_details["cause"], list) and len(error_details["cause"]) > 0:
-                    first_cause = error_details["cause"][0]
-                    if isinstance(first_cause, dict) and first_cause.get("description"):
-                        mp_error_message = first_cause.get("description")
-                    elif isinstance(first_cause, str): 
-                        mp_error_message = first_cause
-
-            raise HTTPException(status_code= int(status_code) if str(status_code).isdigit() else 500, detail=mp_error_message)
-
-    except Exception as mp_e: 
-        is_mp_exception = hasattr(mp_e, 'status_code') and hasattr(mp_e, 'message')
-        
-        if is_mp_exception:
-            _log(f"Erro SANDBOX no SDK do Mercado Pago (Pagamento Único): Status {getattr(mp_e, 'status_code', 'N/A')} - Mensagem: {getattr(mp_e, 'message', str(mp_e))} - Causa: {getattr(mp_e, 'cause', 'N/A')}")
-            
-            error_detail = f"Erro SANDBOX no pagamento único ({getattr(mp_e, 'status_code', 'N/A')}): {getattr(mp_e, 'message', str(mp_e))}"
-            cause = getattr(mp_e, 'cause', None)
-            if cause and isinstance(cause, list) and len(cause) > 0 and isinstance(cause[0], dict) and cause[0].get('description'):
-                error_detail = cause[0].get('description')
-            elif cause and isinstance(cause, str): 
-                error_detail = cause
-
-            http_status_code = getattr(mp_e, 'status_code', 500)
-            if not isinstance(http_status_code, int):
-                http_status_code = 500
-            
-            if pending_enrollment_id in PENDING_ENROLLMENTS: 
-                PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
-            raise HTTPException(status_code=http_status_code, detail=error_detail)
-        else:
-            _log(f"Erro GERAL SANDBOX em endpoint_iniciar_matricula (Pagamento Único): {str(mp_e)} (Tipo: {type(mp_e)})")
-            if pending_enrollment_id in PENDING_ENROLLMENTS: 
-                PENDING_ENROLLMENTS.pop(pending_enrollment_id, None)
-            raise HTTPException(500, detail=f"Erro interno SANDBOX no servidor ao processar pagamento único: {str(mp_e)}")
 
 # ──────────────────────────────────────────────────────────
 # ENDPOINT: Gerar Descrição de Curso com Gemini API (SANDBOX)

@@ -180,17 +180,16 @@ async def mercadopago_webhook(request: Request):
     is_sandbox_transaction = False
 
     # Try fetching with production SDK first
-    # This block now correctly checks for None before accessing .get()
     if sdk_prod:
         try:
             if topic == 'preapproval':
                 response_obj = sdk_prod.preapproval().get(resource_id)
             elif topic == 'payment':
                 response_obj = sdk_prod.payment().get(resource_id)
-            elif topic == 'merchant_order': # NEW: Handle merchant_order topic
+            elif topic == 'merchant_order':
                 response_obj = sdk_prod.merchant_orders().get(resource_id)
             else:
-                response_obj = None # Topic not handled by SDK methods
+                response_obj = None 
             
             if response_obj and response_obj.get("status") in [200, 201]:
                 sdk_to_use = sdk_prod
@@ -219,10 +218,10 @@ async def mercadopago_webhook(request: Request):
                 response_obj = sdk_test.preapproval().get(resource_id)
             elif topic == 'payment':
                 response_obj = sdk_test.payment().get(resource_id)
-            elif topic == 'merchant_order': # NEW: Handle merchant_order topic
+            elif topic == 'merchant_order':
                 response_obj = sdk_test.merchant_orders().get(resource_id)
             else:
-                response_obj = None # Topic not handled by SDK methods
+                response_obj = None
 
             if response_obj and response_obj.get("status") in [200, 201]:
                 sdk_to_use = sdk_test
@@ -249,7 +248,7 @@ async def mercadopago_webhook(request: Request):
 
     # Now process the notification using the correct SDK instance
     try:
-        if topic == 'preapproval':
+        if topic == 'preapproval' or topic == 'subscription_preapproval': # Added subscription_preapproval
             preapproval_data = resource_info_dict.get("response", {})
             mp_status = preapproval_data.get("status")
             payer_email = preapproval_data.get("payer_email")
@@ -295,8 +294,8 @@ async def mercadopago_webhook(request: Request):
                 # student_data_for_cadastrar = your_production_db_lookup(external_reference)
 
 
-            if mp_status == 'authorized':
-                _log(f"Assinatura AUTORIZADA para external_ref: {external_reference}. Chamando endpoint /cadastrar...")
+            if mp_status == 'authorized' or mp_status == 'active': # 'active' for preapproval subscriptions
+                _log(f"Assinatura AUTORIZADA/ATIVA para external_ref: {external_reference}. Chamando endpoint /cadastrar...")
                 call_cadastrar_endpoint(student_data_for_cadastrar, external_reference, is_sandbox_transaction)
             
             elif mp_status == 'pending':
