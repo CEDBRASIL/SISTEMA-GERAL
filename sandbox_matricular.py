@@ -458,4 +458,3 @@ async def generate_course_description_sandbox(body: dict):
     except Exception as e:
         _log(f"Erro geral SANDBOX ao gerar descrição para '{course_name}': {e} (Tipo: {type(e)})")
         raise HTTPException(500, detail=f"Erro interno SANDBOX ao gerar descrição: {e}")
-dada
