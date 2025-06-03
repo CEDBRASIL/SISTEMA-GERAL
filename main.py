@@ -6,8 +6,7 @@ Ponto de entrada da API FastAPI da CED.
 Inclui roteadores:
     • /cursos              → lista de cursos (cursos.py)
     • /api/auth            → autenticação (secure.py)
-    • /api/matricular      → pré-matrícula + criação de assinatura (matricular.py)
-    • /webhook             → confirmação Mercado Pago (webhook.py)
+    
 
 CORS aberto por padrão; ajuste a lista ORIGINS no .env se precisar restringir.
 """
@@ -19,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import cursos
 import secure
 import matricular
+import webhook
 
 
 # ──────────────────────────────────────────────────────────
@@ -55,6 +55,7 @@ app.add_middleware(
 app.include_router(cursos.router,      prefix="/cursos",      tags=["Cursos"])
 app.include_router(secure.router, tags=["Autenticação"])
 app.include_router(matricular.router,  prefix="/api",         tags=["Matrícula"])
+app.include_router(webhook.router, prefix="/webhook" tags=["Webhook"])
 
 
 # ──────────────────────────────────────────────────────────

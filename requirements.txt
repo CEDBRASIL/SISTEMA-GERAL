@@ -1,4 +1,4 @@
-fastapi
-uvicorn[standard]
-python-dotenv
-requests
+fastapi==0.111.0 # Versão recomendada, pode ajustar conforme a sua
+uvicorn==0.30.1 # Servidor ASGI para FastAPI, essencial para execução
+requests==2.32.3 # Para chamadas HTTP externas
+mercadopago==2.0.0 # SDK do Mercado Pago
