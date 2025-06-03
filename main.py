@@ -54,7 +54,7 @@ app.add_middleware(
 # ──────────────────────────────────────────────────────────
 app.include_router(cursos.router,          prefix="/cursos",      tags=["Cursos"])
 app.include_router(secure.router,          tags=["Autenticação"])
-app.include_router(matricular.router,     tags=["Matrícula"]) 
+app.include_router(matricular.router,  prefix="/matricular",  tags=["Matrícula"]) 
 
 
 
