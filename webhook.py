@@ -130,16 +130,20 @@ def call_cadastrar_endpoint(student_data: dict, external_reference: str):
 # ──────────────────────────────────────────────────────────
 @router.post("/webhook/mercadopago")
 async def mercadopago_webhook(request: Request):
+    # Get topic, checking for 'type' as an alternative if 'topic' is not present
     topic = request.query_params.get("topic")
-    # Para o tópico 'payment', o ID do recurso é 'data.id'
-    # Para o tópico 'preapproval', o ID do recurso é 'id'
-    resource_id = request.query_params.get("id") or request.query_params.get("data.id")
+    if not topic:
+        topic = request.query_params.get("type") # Mercado Pago sometimes sends 'type' instead of 'topic'
 
+    # Get resource ID, checking 'id' first, then 'data.id'
+    resource_id = request.query_params.get("id")
+    if not resource_id:
+        resource_id = request.query_params.get("data.id")
 
     _log(f"[MP Webhook] Recebido topic: {topic}, Resource ID: {resource_id}")
 
     if not topic or not resource_id:
-        _log("[MP Webhook] ERRO: 'topic' ou 'id'/'data.id' ausentes nos query parameters.")
+        _log(f"[MP Webhook] ERRO: 'topic' ou 'id'/'data.id' ausentes nos query parameters. Topic: {topic}, ID: {resource_id}")
         return {"status": "error", "message": "Missing parameters"}, 200 # MP espera 200/201
 
     if not sdk_webhook:
@@ -172,72 +176,70 @@ async def mercadopago_webhook(request: Request):
                 send_discord_notification(f"Webhook de Assinatura Recebido SEM External Reference para MP ID {preapproval_mp_id}, Payer: {payer_email}. Impossível processar.", success=False)
                 return {"status": "error", "message": "External reference missing in notification"}, 200
 
-            # Recuperar dados do aluno da memória temporária (PENDING_ENROLLMENTS)
-            # ATENÇÃO: Em produção, isso deve ser feito buscando em um banco de dados persistente!
-            # PENDING_ENROLLMENTS é uma solução temporária para o sandbox.
-            # Se o webhook chegar muito tempo depois, ou se o servidor reiniciar, os dados podem não estar lá.
-            # Para este exemplo, vamos simular que os dados viriam de um banco de dados
-            # ou que o external_reference contém informações suficientes.
-            # Por simplicidade, vou assumir que o external_reference pode ser usado para buscar dados
-            # ou que o webhook do MP pode trazer mais detalhes sobre o pagador.
-            # Como o `sandbox_matricular.py` armazena `nome`, `whatsapp`, `email`, `cursos_nomes`
-            # em PENDING_ENROLLMENTS, vamos tentar recuperá-los.
+            # --- ATENÇÃO: RECUPERAÇÃO DE DADOS DO ALUNO ---
+            # Em um cenário de produção, você buscaria esses dados de um banco de dados persistente
+            # usando o `external_reference` ou `preapproval_mp_id`.
+            # A importação de PENDING_ENROLLMENTS de `sandbox_matricular` é apenas para simulação de teste.
+            # Para este exemplo, vamos simular que os dados do aluno viriam de um DB.
+            # Como não temos um DB aqui, vou criar um dicionário dummy para simular os dados.
+            # Você DEVE substituir isso pela sua lógica de busca em DB.
             
-            # TODO: Em um cenário real, você buscaria esses dados de um banco de dados
-            # associado ao `external_reference` ou `preapproval_mp_id`.
-            # Por enquanto, vamos usar uma estrutura dummy ou tentar recuperar do PENDING_ENROLLMENTS
-            # do matricular.py (que é uma má prática para produção, mas para teste serve).
-            # Para evitar a importação circular e a dependência de memória,
-            # o ideal é que o `external_reference` seja suficiente para buscar os dados do aluno
-            # em um banco de dados.
-            # Para este exemplo, vou simular dados de aluno, mas você deve integrar com seu DB.
+            # Simulando a recuperação de dados do aluno (IDEALMENTE DE UM BANCO DE DADOS!)
+            # Para o contexto de teste, vamos assumir que o external_reference ou o email do pagador
+            # pode ser usado para inferir os dados necessários.
+            # Se você usa PENDING_ENROLLMENTS de sandbox_matricular, certifique-se que ele é acessível
+            # e persistente o suficiente para o seu ambiente.
             
-            # Simulando a recuperação dos dados do aluno (idealmente de um DB)
-            # Como PENDING_ENROLLMENTS não é compartilhado entre processos,
-            # e o webhook pode ser executado em uma instância diferente,
-            # a recuperação precisa ser robusta.
-            # Por simplicidade, vou usar um placeholder e um log para o caso de não encontrar.
-            
-            # IMPORTANTE: A importação de PENDING_ENROLLMENTS de `matricular` ou `sandbox_matricular`
-            # é problemática em produção. O ideal é que o `external_reference`
-            # seja a chave para buscar os dados completos do aluno em um banco de dados.
-            # Para este exemplo de teste, vou re-importar PENDING_ENROLLMENTS do sandbox_matricular
-            # (ASSUMINDO QUE AMBOS RODAM NO MESMO PROCESSO PARA TESTES)
-            from sandbox_matricular import PENDING_ENROLLMENTS as SANDBOX_PENDING_ENROLLMENTS
-            pending_data = SANDBOX_PENDING_ENROLLMENTS.get(external_reference)
+            # Exemplo de como você buscaria os dados do aluno de um DB:
+            # student_data_from_db = your_database_lookup_function(external_reference)
+            # if not student_data_from_db:
+            #    _log("Erro: Dados do aluno não encontrados no DB para external_reference.")
+            #    send_discord_notification("Erro: Dados do aluno não encontrados no DB para external_reference.", success=False)
+            #    return {"status": "error", "message": "Student data not found"}, 200
 
-            if not pending_data:
-                _log(f"[MP Webhook] Aluno pendente não encontrado para external_reference: {external_reference}. MP ID: {preapproval_mp_id}. Possível webhook tardio/duplicado ou dado expirado/não encontrado.")
-                send_discord_notification(f"Webhook de Assinatura Recebido: Status {mp_status} para {payer_email} (MP ID: {preapproval_mp_id}).\nID de Ref. Externa '{external_reference}' NÃO encontrado no sistema. Pode ser tardio, duplicado ou expirado.", success=False)
-                return {"status": "success", "message": "External reference not found or already processed."}, 200
-
-            # Preparar dados para o endpoint /cadastrar
+            # Para manter o exemplo funcional sem um DB, vou criar um dummy student_data
+            # com base no que o webhook do MP pode fornecer.
+            # O ideal é que o `external_reference` seja a chave para o seu DB.
             student_data_for_cadastrar = {
-                "nome": pending_data.get("nome"),
-                "whatsapp": pending_data.get("whatsapp"),
-                "email": pending_data.get("email"),
-                "cursos": pending_data.get("cursos_nomes")
+                "nome": "Nome Desconhecido (via Webhook)", # Substituir por nome real do DB
+                "whatsapp": "00000000000", # Substituir por whatsapp real do DB
+                "email": payer_email,
+                "cursos": ["Curso Padrão (via Webhook)"] # Substituir por cursos reais do DB
             }
+            # Se você *ainda* estiver usando PENDING_ENROLLMENTS de `sandbox_matricular`
+            # e tiver certeza que ele é acessível, pode descomentar e usar:
+            # from sandbox_matricular import PENDING_ENROLLMENTS as SANDBOX_PENDING_ENROLLMENTS
+            # pending_data = SANDBOX_PENDING_ENROLLMENTS.get(external_reference)
+            # if pending_data:
+            #     student_data_for_cadastrar = {
+            #         "nome": pending_data.get("nome"),
+            #         "whatsapp": pending_data.get("whatsapp"),
+            #         "email": pending_data.get("email"),
+            #         "cursos": pending_data.get("cursos_nomes")
+            #     }
+            # else:
+            #     _log(f"AVISO: Dados de matrícula pendente não encontrados em PENDING_ENROLLMENTS para {external_reference}. Usando dados genéricos.")
+
 
             if mp_status == 'authorized': # Assinatura autorizada (pagamento inicial aprovado)
                 _log(f"Assinatura AUTORIZADA para external_ref: {external_reference}. Chamando endpoint /cadastrar...")
                 call_cadastrar_endpoint(student_data_for_cadastrar, external_reference)
             
             elif mp_status == 'pending': # Assinatura pendente de autorização
-                _log(f"Assinatura PENDENTE para external_ref: {external_reference} (Nome: {pending_data.get('nome')}).")
-                send_discord_notification(f"⏳ Assinatura PENDENTE no MP para {pending_data.get('nome')} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.\nAguardando autorização/compensação.", success=True)
+                _log(f"Assinatura PENDENTE para external_ref: {external_reference} (Payer: {payer_email}).")
+                send_discord_notification(f"⏳ Assinatura PENDENTE no MP para {payer_email} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.\nAguardando autorização/compensação.", success=True)
                 
             elif mp_status == 'paused': # Assinatura pausada
-                _log(f"Assinatura PAUSADA para external_ref: {external_reference} (Nome: {pending_data.get('nome')}).")
-                send_discord_notification(f"⏸️ Assinatura PAUSADA no MP para {pending_data.get('nome')} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=True) 
+                _log(f"Assinatura PAUSADA para external_ref: {external_reference} (Payer: {payer_email}).")
+                send_discord_notification(f"⏸️ Assinatura PAUSADA no MP para {payer_email} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=True) 
 
             elif mp_status == 'cancelled': # Assinatura cancelada
-                _log(f"Assinatura CANCELADA para external_ref: {external_reference} (Nome: {pending_data.get('nome')}).")
-                send_discord_notification(f"❌ Assinatura CANCELADA no MP para {pending_data.get('nome')} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=False)
+                _log(f"Assinatura CANCELADA para external_ref: {external_reference} (Payer: {payer_email}).")
+                send_discord_notification(f"❌ Assinatura CANCELADA no MP para {payer_email} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=False)
                 
             else: # Outros status (ex: rejected, etc.)
-                _log(f"Assinatura com status MP '{mp_status}' para external_ref: {external_reference} (Nome: {pending_data.get('nome')}).")
-                send_discord_notification(f"ℹ️ Status da Assinatura MP: '{mp_status}' para {pending_data.get('nome')} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=False)
+                _log(f"Assinatura com status MP '{mp_status}' para external_ref: {external_reference} (Payer: {payer_email}).")
+                send_discord_notification(f"ℹ️ Status da Assinatura MP: '{mp_status}' para {payer_email} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=False)
 
 
         # Tópico 'payment' para pagamentos avulsos ou recorrentes
@@ -262,7 +264,7 @@ async def mercadopago_webhook(request: Request):
 
             # Se o external_reference for usado para pagamentos únicos, você pode buscar os dados
             # do aluno aqui e chamar o endpoint /cadastrar.
-            # Para este exemplo, vou apenas logar.
+            # Para este exemplo, vou apenas logar e enviar para o Discord.
             send_discord_notification(
                 f"💰 Webhook de Pagamento MP Recebido! 💰\n"
                 f"ID Pagamento MP: {mp_payment_id}\n"
