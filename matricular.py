@@ -23,9 +23,11 @@ CHATPRO_URL = os.getenv("CHATPRO_URL")  # ex.: "https://v5.chatpro.com.br/chatpr
 CPF_PREFIXO = "20254158"
 cpf_lock = threading.Lock()
 
+
 def _log(msg: str):
     agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{agora}] {msg}")
+
 
 def _obter_token_unidade() -> str:
     """
@@ -42,6 +44,7 @@ def _obter_token_unidade() -> str:
     if r.ok and r.json().get("status") == "true":
         return r.json()["data"]["token"]
     raise RuntimeError(f"Falha ao obter token da unidade: HTTP {r.status_code}")
+
 
 def _total_alunos() -> int:
     """
@@ -68,8 +71,10 @@ def _total_alunos() -> int:
 
     raise RuntimeError("Falha ao apurar total de alunos")
 
+
 # Melhorias na geração de CPF
 CPF_MAX_RETRIES = 100  # Limite de tentativas para evitar colisões
+
 
 def _proximo_cpf(incremento: int = 0) -> str:
     """
@@ -82,6 +87,7 @@ def _proximo_cpf(incremento: int = 0) -> str:
             if not _cpf_em_uso(cpf):
                 return cpf
         raise RuntimeError("Limite de tentativas para gerar CPF excedido.")
+
 
 def _cpf_em_uso(cpf: str) -> bool:
     """
@@ -96,6 +102,7 @@ def _cpf_em_uso(cpf: str) -> bool:
     if r.ok and r.json().get("status") == "true":
         return len(r.json().get("data", [])) > 0
     return False
+
 
 def _cadastrar_somente_aluno(
     nome: str,
@@ -152,6 +159,7 @@ def _cadastrar_somente_aluno(
 
     raise RuntimeError("Falha ao cadastrar o aluno")
 
+
 def _matricular_aluno_om(aluno_id: str, cursos_ids: List[int], token_key: str) -> bool:
     """
     Efetua a matrícula (vincula disciplinas) para o aluno já cadastrado.
@@ -173,6 +181,7 @@ def _matricular_aluno_om(aluno_id: str, cursos_ids: List[int], token_key: str) -
     sucesso = r.ok and r.json().get("status") == "true"
     _log(f"[MAT] {'✅' if sucesso else '❌'} Status {r.status_code} | Retorno OM: {r.text}")
     return sucesso
+
 
 def _cadastrar_aluno_om(
     nome: str,
@@ -198,6 +207,7 @@ def _cadastrar_aluno_om(
         _log(f"[MAT] Curso não informado para {nome}. Cadastro concluído sem matrícula.")
 
     return aluno_id, cpf
+
 
 def _send_whatsapp_chatpro(
     nome: str,
@@ -227,24 +237,33 @@ def _send_whatsapp_chatpro(
         f"Qualquer dúvida, estamos à disposição. Boa jornada de estudos! 🚀"
     )
 
+    # Monta o payload conforme a API real do ChatPro
     payload = {
-        "token": CHATPRO_TOKEN,
-        "numero": numero_telefone,
-        "mensagem": mensagem
+        "number": numero_telefone,
+        "message": mensagem
+    }
+
+    # Cabeçalhos corretos: Content-Type e Authorization
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "Authorization": CHATPRO_TOKEN
     }
 
     try:
         r = requests.post(
             CHATPRO_URL,
             json=payload,
+            headers=headers,
             timeout=10
         )
         if r.ok:
-            _log(f"[CHATPRO] Mensagem enviada com sucesso para {numero_telefone}.")
+            _log(f"[CHATPRO] Mensagem enviada com sucesso para {numero_telefone}. Resposta: {r.text}")
         else:
             _log(f"[CHATPRO] Falha ao enviar mensagem para {numero_telefone}. HTTP {r.status_code} | {r.text}")
     except Exception as e:
         _log(f"[CHATPRO] Erro inesperado ao enviar WhatsApp para {numero_telefone}: {str(e)}")
+
 
 @router.post("/", summary="Cadastra (e opcionalmente matricula) um aluno na OM e envia WhatsApp via ChatPro")
 async def realizar_matricula(dados: dict):
