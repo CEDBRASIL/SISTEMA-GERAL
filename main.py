@@ -20,9 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import cursos
 import secure
 import matricular
-import webhook 
-# import sandbox_matricular # REMOVIDO: Sandbox desativado
-import cadastrar
+
 # ──────────────────────────────────────────────────────────
 # Instância FastAPI
 # ──────────────────────────────────────────────────────────
