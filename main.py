@@ -56,10 +56,10 @@ app.add_middleware(
 # ──────────────────────────────────────────────────────────
 app.include_router(cursos.router,          prefix="/cursos",      tags=["Cursos"])
 app.include_router(secure.router,          tags=["Autenticação"])
-app.include_router(matricular.router,      prefix="/api",        tags=["Matrícula"]) # Agora contém /api/initiate-subscription
-app.include_router(webhook.router,         prefix="/api",        tags=["Webhooks"])
-# app.include_router(sandbox_matricular.router, prefix="/sandbox", tags=["Sandbox"]) # REMOVIDO: Sandbox desativado
-app.include_router(cadastrar.router,       prefix="/cadastrar",  tags=["Cadastro OM"])
+app.include_router(matricular.router,     tags=["Matrícula"]) 
+
+
+
 
 
 # ──────────────────────────────────────────────────────────
