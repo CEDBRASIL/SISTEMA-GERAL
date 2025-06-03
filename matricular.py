@@ -75,7 +75,7 @@ def _obter_token_unidade() -> str:
         _log(f"Erro de conexão ao obter token da unidade: {e}")
         raise RuntimeError(f"Erro de conexão ao obter token da unidade: {e}")
     except ValueError: # JSONDecodeError herda de ValueError
-        _log(f"Resposta inválida (não JSON) ao obter token da unidade: {r.text}")
+        _log(f"Resposta inválida (não JSON) ao obter token da unidade: {r.text if 'r' in locals() else 'N/A'}")
         raise RuntimeError("Resposta inválida (não JSON) ao obter token da unidade.")
 
 
@@ -112,7 +112,7 @@ def _total_alunos() -> int:
         _log(f"Erro de conexão na contagem alternativa de alunos: {e}")
         raise RuntimeError(f"Erro de conexão na contagem alternativa de alunos: {e}")
     except ValueError:
-        _log(f"Resposta inválida (não JSON) na contagem alternativa de alunos: {r_list.text}")
+        _log(f"Resposta inválida (não JSON) na contagem alternativa de alunos: {r_list.text if 'r_list' in locals() else 'N/A'}")
         raise RuntimeError("Resposta inválida (não JSON) na contagem alternativa de alunos.")
 
 
@@ -144,7 +144,7 @@ def _matricular_om(aluno_id:str, cursos_ids:List[int], token:str)->bool:
         _log(f"Erro de conexão ao matricular no OM: {e}")
         return False
     except ValueError: # JSONDecodeError
-        _log(f"Resposta inválida (não JSON) ao matricular no OM: {r.text}")
+        _log(f"Resposta inválida (não JSON) ao matricular no OM: {r.text if 'r' in locals() else 'N/A'}")
         return False
 
 
@@ -199,7 +199,7 @@ def _cadastrar_aluno(nome:str, whatsapp:str, email:str, cursos_ids:List[int], to
             _log(f"Erro de conexão ao cadastrar aluno: {e}")
             break # Sai do loop em caso de erro de conexão
         except ValueError: # JSONDecodeError
-             _log(f"Resposta inválida (não JSON) ao cadastrar aluno: {r.text}")
+             _log(f"Resposta inválida (não JSON) ao cadastrar aluno: {r.text if 'r' in locals() else 'N/A'}")
              break
 
     _log(f"Não foi possível cadastrar/matricular o aluno {nome} após tentativas.")
@@ -261,13 +261,13 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
     
     if not email: # Mercado Pago requer um email para o pagador
         _log("AVISO: Email não fornecido. Usando placeholder para Mercado Pago.")
-        email = f"{uuid.uuid4().hex[:10]}@placeholder.com" # Email placeholder se não fornecido
+        # Usar um email placeholder mais robusto ou exigir email no frontend
+        timestamp_uuid = uuid.uuid4().hex[:8]
+        email = f"user_{timestamp_uuid}@placeholder.ced.com"
+
 
     curso_principal_nome = cursos_nomes[0] if cursos_nomes else "Matrícula Curso Online"
     
-    # O valor é fixo pelo plano de assinatura, não precisa ser calculado aqui.
-    # valor_total_curso = 49.90 # Preço fixo de R$49,90
-
     if not MP_PREAPPROVAL_PLAN_ID:
         _log("ERRO CRÍTICO: MP_PREAPPROVAL_PLAN_ID não configurado no ambiente.")
         raise HTTPException(500, detail="Configuração de pagamento indisponível (PLAN_ID).")
@@ -289,10 +289,7 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
         }
         _log(f"Matrícula pendente ID: {pending_enrollment_id} para {nome} armazenada.")
 
-        # URL de notificação do webhook (este próprio backend)
-        # Construir a URL completa do webhook dinamicamente
-        # Ex: http://localhost:8000/api/webhook/mercadopago ou https://api.cedbrasilia.com.br/api/webhook/mercadopago
-        base_url = str(request.base_url) # ex: "http://localhost:8000/" ou "https://api.cedbrasilia.com.br/"
+        base_url = str(request.base_url) 
         notification_url = f"{base_url.rstrip('/')}/api/webhook/mercadopago"
         _log(f"URL de notificação para MP configurada como: {notification_url}")
 
@@ -300,24 +297,23 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
         preapproval_data = {
             "reason": f"Assinatura: {curso_principal_nome}",
             "preapproval_plan_id": MP_PREAPPROVAL_PLAN_ID,
-            "payer_email": email, # Email do pagador
-            "back_url": THANK_YOU_PAGE_URL, # Para onde o usuário é redirecionado
-            "external_reference": pending_enrollment_id, # ID para conciliação
-            "notification_url": notification_url # URL para webhooks do MP
+            "payer_email": email, 
+            "back_url": THANK_YOU_PAGE_URL, 
+            "external_reference": pending_enrollment_id, 
+            "notification_url": notification_url 
         }
         
         _log(f"Criando assinatura MP com dados: {preapproval_data}")
         preapproval_response_dict = sdk_matricular.preapproval().create(preapproval_data)
         
-        # O SDK retorna um dict, ex: {'status': 201, 'response': { ...dados... }}
-        if preapproval_response_dict and preapproval_response_dict.get("status") == 201: # 201 Created
+        if preapproval_response_dict and preapproval_response_dict.get("status") == 201: 
             response_data = preapproval_response_dict.get("response", {})
             init_point = response_data.get("init_point")
             mp_preapproval_id = response_data.get("id")
 
             if not init_point or not mp_preapproval_id:
                 _log(f"ERRO: init_point ou ID da pré-aprovação ausentes na resposta do MP: {response_data}")
-                PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) # Limpa pendência
+                PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
                 raise HTTPException(500, detail="Falha ao obter dados da criação da assinatura MP.")
 
             _log(f"Assinatura MP criada (ID: {mp_preapproval_id}). Redirect: {init_point}")
@@ -334,27 +330,39 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
             status_code = preapproval_response_dict.get('status', 'N/A') if preapproval_response_dict else 'N/A'
             _log(f"Erro ao criar assinatura MP: Status {status_code} - Detalhes: {error_details}")
             PENDING_ENROLLMENTS.pop(pending_enrollment_id, None)
-            # Tentar extrair uma mensagem de erro mais útil do MP, se disponível
+            
             mp_error_message = "Falha ao iniciar o pagamento com Mercado Pago."
             if isinstance(error_details, dict) and error_details.get("message"):
                 mp_error_message = error_details.get("message")
-                if error_details.get("cause"):
-                     mp_error_message += f" Causa: {error_details.get('cause')}"
+                if error_details.get("cause") and isinstance(error_details["cause"], list) and len(error_details["cause"]) > 0:
+                     # Tenta pegar a descrição da primeira causa, se existir
+                     first_cause = error_details["cause"][0]
+                     if isinstance(first_cause, dict) and first_cause.get("description"):
+                         mp_error_message = first_cause.get("description")
+                     elif isinstance(first_cause, str): # Às vezes a causa é apenas uma string
+                         mp_error_message = first_cause
 
-            raise HTTPException(500, detail=mp_error_message)
 
-    except mercadopago.exceptions.MPException as mp_e:
-        _log(f"Erro no SDK do Mercado Pago (MPException): Status {mp_e.status_code} - Mensagem: {mp_e.message} - Causa: {mp_e.cause}")
-        PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) # Limpa pendência
-        # Tenta fornecer uma mensagem de erro mais específica para o cliente, se possível
-        error_detail = f"Erro no pagamento ({mp_e.status_code}): {mp_e.message}"
-        if mp_e.cause and isinstance(mp_e.cause, list) and len(mp_e.cause) > 0 and mp_e.cause[0].get('description'):
-            error_detail = mp_e.cause[0].get('description')
+            raise HTTPException(status_code= int(status_code) if str(status_code).isdigit() else 500, detail=mp_error_message)
 
-        raise HTTPException(status_code=mp_e.status_code or 500, detail=error_detail)
+    # CORREÇÃO APLICADA AQUI:
+    except mercadopago.MPException as mp_e: # Alterado de mercadopago.exceptions.MPException
+        _log(f"Erro no SDK do Mercado Pago (MPException): Status {getattr(mp_e, 'status_code', 'N/A')} - Mensagem: {getattr(mp_e, 'message', str(mp_e))} - Causa: {getattr(mp_e, 'cause', 'N/A')}")
+        if pending_enrollment_id in PENDING_ENROLLMENTS: # Garante que o ID existe antes de tentar pop
+            PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
+        
+        error_detail = f"Erro no pagamento ({getattr(mp_e, 'status_code', 'N/A')}): {getattr(mp_e, 'message', str(mp_e))}"
+        cause = getattr(mp_e, 'cause', None)
+        if cause and isinstance(cause, list) and len(cause) > 0 and isinstance(cause[0], dict) and cause[0].get('description'):
+            error_detail = cause[0].get('description')
+        elif cause and isinstance(cause, str): # Se a causa for uma string simples
+             error_detail = cause
+
+
+        raise HTTPException(status_code=getattr(mp_e, 'status_code', 500) or 500, detail=error_detail)
     except Exception as e:
         _log(f"Erro GERAL em endpoint_iniciar_matricula: {str(e)} (Tipo: {type(e)})")
-        if pending_enrollment_id in PENDING_ENROLLMENTS: # Tenta limpar se o ID foi gerado
+        if pending_enrollment_id in PENDING_ENROLLMENTS: 
             PENDING_ENROLLMENTS.pop(pending_enrollment_id, None)
         raise HTTPException(500, detail=f"Erro interno no servidor ao processar matrícula: {str(e)}")
 
@@ -369,16 +377,17 @@ async def generate_course_description(body: dict):
         raise HTTPException(400, detail="O nome do curso é obrigatório para gerar a descrição.")
 
     # GEMINI_API_KEY é preenchido pelo Canvas em tempo de execução
-    # A verificação se GEMINI_API_KEY está vazio não é estritamente necessária aqui
-    # se o ambiente do Canvas garantir sua presença.
+    # A URL deve ser para o modelo gemini-2.0-flash.
+    # A chave de API será adicionada automaticamente pelo ambiente do Canvas se GEMINI_API_KEY for uma string vazia.
+    
+    # Se GEMINI_API_KEY for uma string vazia, o Canvas a injetará.
+    # Se você tiver uma chave codificada, ela será usada.
+    api_key_to_use = GEMINI_API_KEY 
+    
+    gemini_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key_to_use}"
 
     prompt = f"Gere uma descrição envolvente e concisa para um curso de {course_name} focado em atrair novos alunos. Inclua 3-4 pontos-chave sobre o que o aluno aprenderá e os benefícios de se matricular. Use um tom entusiasmado e profissional. A descrição deve ter no máximo 150 palavras."
     
-    # O Canvas injeta a API Key, não precisa concatenar na URL.
-    # A URL deve ser para o modelo gemini-2.0-flash, não gemini-pro.
-    gemini_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
-
-
     payload = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}]
     }
@@ -387,7 +396,7 @@ async def generate_course_description(body: dict):
     try:
         _log(f"Enviando requisição para Gemini API para curso: {course_name}")
         response = requests.post(gemini_api_url, headers=headers, data=json.dumps(payload), timeout=30)
-        response.raise_for_status() # Levanta HTTPError para respostas 4xx/5xx
+        response.raise_for_status() 
         
         gemini_result = response.json()
         
@@ -406,15 +415,32 @@ async def generate_course_description(body: dict):
             return {"status": "ok", "description": generated_text}
         else:
             _log(f"Resposta inesperada ou incompleta da API Gemini para '{course_name}': {gemini_result}")
-            raise HTTPException(500, detail="Falha ao gerar descrição do curso (resposta inválida da IA).")
+            # Tentar extrair mensagem de erro da resposta do Gemini, se houver
+            error_message_gemini = "Falha ao gerar descrição do curso (resposta inválida da IA)."
+            if gemini_result and gemini_result.get("error") and gemini_result["error"].get("message"):
+                error_message_gemini = gemini_result["error"]["message"]
+            elif gemini_result and gemini_result.get("promptFeedback") and gemini_result["promptFeedback"].get("blockReason"):
+                 error_message_gemini = f"Conteúdo bloqueado pela IA: {gemini_result['promptFeedback']['blockReason']}"
+            raise HTTPException(500, detail=error_message_gemini)
 
     except requests.exceptions.Timeout:
         _log(f"Timeout ao conectar com a API Gemini para '{course_name}'.")
         raise HTTPException(504, detail="Serviço de geração de descrição demorou muito para responder.")
+    except requests.exceptions.HTTPError as http_err:
+        _log(f"Erro HTTP da API Gemini para '{course_name}': {http_err}. Resposta: {http_err.response.text}")
+        error_detail_gemini = f"Erro da API Gemini ({http_err.response.status_code})."
+        try:
+            err_json = http_err.response.json()
+            if err_json.get("error", {}).get("message"):
+                error_detail_gemini = err_json["error"]["message"]
+        except ValueError:
+            pass # Não era JSON
+        raise HTTPException(http_err.response.status_code, detail=error_detail_gemini)
+
     except requests.exceptions.RequestException as e:
         _log(f"Erro de conexão com a API Gemini para '{course_name}': {e}")
-        raise HTTPException(503, detail=f"Erro de comunicação ao gerar descrição: {e}") # 503 Service Unavailable
-    except ValueError: # JSONDecodeError
+        raise HTTPException(503, detail=f"Erro de comunicação ao gerar descrição: {e}") 
+    except ValueError: 
         _log(f"Resposta inválida (não JSON) da API Gemini: {response.text if 'response' in locals() else 'N/A'}")
         raise HTTPException(500, detail="Falha ao processar resposta da IA (formato inválido).")
     except Exception as e:
