@@ -13,6 +13,10 @@ from datetime import datetime
 import uuid # Para gerar IDs únicos para as matrículas pendentes
 from cursos import CURSOS_OM # Presumo que CURSOS_OM esteja definido em cursos.py
 import mercadopago # Importar o SDK do Mercado Pago
+from mercadopago.exceptions import MPException # Tentar importar MPException diretamente de exceptions
+# Se o acima falhar, pode ser necessário importar de forma mais específica para a v2.3.0,
+# como por exemplo, de mercadopago.rest_client caso MPRESTException seja usada.
+
 import json # Para lidar com JSON da resposta da API Gemini
 
 router = APIRouter()
@@ -335,31 +339,35 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
             if isinstance(error_details, dict) and error_details.get("message"):
                 mp_error_message = error_details.get("message")
                 if error_details.get("cause") and isinstance(error_details["cause"], list) and len(error_details["cause"]) > 0:
-                     # Tenta pegar a descrição da primeira causa, se existir
                      first_cause = error_details["cause"][0]
                      if isinstance(first_cause, dict) and first_cause.get("description"):
                          mp_error_message = first_cause.get("description")
-                     elif isinstance(first_cause, str): # Às vezes a causa é apenas uma string
+                     elif isinstance(first_cause, str): 
                          mp_error_message = first_cause
 
 
             raise HTTPException(status_code= int(status_code) if str(status_code).isdigit() else 500, detail=mp_error_message)
 
     # CORREÇÃO APLICADA AQUI:
-    except mercadopago.MPException as mp_e: # Alterado de mercadopago.exceptions.MPException
+    # Tentar importar a exceção específica se disponível na versão, senão usar a genérica.
+    except MPException as mp_e: 
         _log(f"Erro no SDK do Mercado Pago (MPException): Status {getattr(mp_e, 'status_code', 'N/A')} - Mensagem: {getattr(mp_e, 'message', str(mp_e))} - Causa: {getattr(mp_e, 'cause', 'N/A')}")
-        if pending_enrollment_id in PENDING_ENROLLMENTS: # Garante que o ID existe antes de tentar pop
+        if pending_enrollment_id in PENDING_ENROLLMENTS: 
             PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
         
         error_detail = f"Erro no pagamento ({getattr(mp_e, 'status_code', 'N/A')}): {getattr(mp_e, 'message', str(mp_e))}"
         cause = getattr(mp_e, 'cause', None)
         if cause and isinstance(cause, list) and len(cause) > 0 and isinstance(cause[0], dict) and cause[0].get('description'):
             error_detail = cause[0].get('description')
-        elif cause and isinstance(cause, str): # Se a causa for uma string simples
+        elif cause and isinstance(cause, str): 
              error_detail = cause
 
+        # Garantir que status_code seja um int para HTTPException
+        http_status_code = getattr(mp_e, 'status_code', 500)
+        if not isinstance(http_status_code, int):
+            http_status_code = 500
 
-        raise HTTPException(status_code=getattr(mp_e, 'status_code', 500) or 500, detail=error_detail)
+        raise HTTPException(status_code=http_status_code, detail=error_detail)
     except Exception as e:
         _log(f"Erro GERAL em endpoint_iniciar_matricula: {str(e)} (Tipo: {type(e)})")
         if pending_enrollment_id in PENDING_ENROLLMENTS: 
@@ -375,13 +383,7 @@ async def generate_course_description(body: dict):
 
     if not course_name:
         raise HTTPException(400, detail="O nome do curso é obrigatório para gerar a descrição.")
-
-    # GEMINI_API_KEY é preenchido pelo Canvas em tempo de execução
-    # A URL deve ser para o modelo gemini-2.0-flash.
-    # A chave de API será adicionada automaticamente pelo ambiente do Canvas se GEMINI_API_KEY for uma string vazia.
     
-    # Se GEMINI_API_KEY for uma string vazia, o Canvas a injetará.
-    # Se você tiver uma chave codificada, ela será usada.
     api_key_to_use = GEMINI_API_KEY 
     
     gemini_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key_to_use}"
@@ -415,7 +417,6 @@ async def generate_course_description(body: dict):
             return {"status": "ok", "description": generated_text}
         else:
             _log(f"Resposta inesperada ou incompleta da API Gemini para '{course_name}': {gemini_result}")
-            # Tentar extrair mensagem de erro da resposta do Gemini, se houver
             error_message_gemini = "Falha ao gerar descrição do curso (resposta inválida da IA)."
             if gemini_result and gemini_result.get("error") and gemini_result["error"].get("message"):
                 error_message_gemini = gemini_result["error"]["message"]
@@ -434,7 +435,7 @@ async def generate_course_description(body: dict):
             if err_json.get("error", {}).get("message"):
                 error_detail_gemini = err_json["error"]["message"]
         except ValueError:
-            pass # Não era JSON
+            pass 
         raise HTTPException(http_err.response.status_code, detail=error_detail_gemini)
 
     except requests.exceptions.RequestException as e:
