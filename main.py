@@ -8,7 +8,6 @@ Inclui roteadores:
     • /api/auth           → autenticação (secure.py)
     • /api                → matrícula (matricular.py)
     • /api/webhook        → webhooks (webhook.py)
-    • /sandbox            → matrícula sandbox (sandbox_matricular.py)
     • /cadastrar          → cadastro/matrícula OM e ChatPro (cadastrar.py)
 
 CORS aberto por padrão; ajuste a lista ORIGINS no .env se precisar restringir.
@@ -22,7 +21,7 @@ import cursos
 import secure
 import matricular
 import webhook 
-import sandbox_matricular
+# import sandbox_matricular # REMOVIDO: Sandbox desativado
 import cadastrar
 # ──────────────────────────────────────────────────────────
 # Instância FastAPI
@@ -57,9 +56,9 @@ app.add_middleware(
 # ──────────────────────────────────────────────────────────
 app.include_router(cursos.router,          prefix="/cursos",      tags=["Cursos"])
 app.include_router(secure.router,          tags=["Autenticação"])
-app.include_router(matricular.router,      prefix="/api",        tags=["Matrícula"]) # Matricular agora contém /api/initiate-subscription
+app.include_router(matricular.router,      prefix="/api",        tags=["Matrícula"]) # Agora contém /api/initiate-subscription
 app.include_router(webhook.router,         prefix="/api",        tags=["Webhooks"])
-app.include_router(sandbox_matricular.router, prefix="/sandbox", tags=["Sandbox"])
+# app.include_router(sandbox_matricular.router, prefix="/sandbox", tags=["Sandbox"]) # REMOVIDO: Sandbox desativado
 app.include_router(cadastrar.router,       prefix="/cadastrar",  tags=["Cadastro OM"])
 
 

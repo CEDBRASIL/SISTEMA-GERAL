@@ -1,11 +1,11 @@
 """
-matricular.py – Este arquivo agora é responsável por iniciar a criação de assinaturas (pré-aprovações)
+matricular.py – Este arquivo é responsável por iniciar a criação de assinaturas (pré-aprovações)
 dinamicamente no Mercado Pago (PRODUÇÃO).
 Ele também mantém o endpoint para gerar descrição de curso com Gemini API.
 """
 
 import os
-import threading
+import threading # Mantido para cpf_lock se _total_alunos for reintroduzido para CPF
 from typing import List, Tuple, Optional, Dict
 import requests
 from fastapi import APIRouter, HTTPException, Request
@@ -21,15 +21,19 @@ router = APIRouter()
 # ──────────────────────────────────────────────────────────
 # Variáveis de Ambiente (Puxadas via os.getenv)
 # ──────────────────────────────────────────────────────────
-OM_BASE = os.getenv("OM_BASE") # Mantido, embora não usado diretamente neste arquivo
-BASIC_B64 = os.getenv("BASIC_B64") # Mantido
-UNIDADE_ID = os.getenv("UNIDADE_ID") # Mantido
+# OM_BASE, BASIC_B64, UNIDADE_ID não são mais usados diretamente aqui,
+# mas são mantidos para clareza se outras funções os utilizarem no futuro.
+OM_BASE = os.getenv("OM_BASE")
+BASIC_B64 = os.getenv("BASIC_B64")
+UNIDADE_ID = os.getenv("UNIDADE_ID")
+
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
 THANK_YOU_PAGE_URL = os.getenv("THANK_YOU_PAGE_URL")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # O ID do plano de pré-aprovação de produção (fixo)
 MP_PREAPPROVAL_PLAN_ID = os.getenv("MP_PREAPPROVAL_PLAN_ID")
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 
 # ──────────────────────────────────────────────────────────
@@ -61,7 +65,7 @@ else:
         _log(f"ERRO CRÍTICO ao inicializar SDK Mercado Pago em matricular.py: {e}. A integração com Mercado Pago PODE NÃO FUNCIONAR.")
 
 # ──────────────────────────────────────────────────────────
-# NOVO ENDPOINT: Iniciar Assinatura (Cria pré-aprovação dinamicamente)
+# ENDPOINT: Iniciar Assinatura (Cria pré-aprovação dinamicamente)
 # ──────────────────────────────────────────────────────────
 @router.post("/initiate-subscription")
 async def initiate_subscription(body: dict, request: Request):
