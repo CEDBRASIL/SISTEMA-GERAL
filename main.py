@@ -21,7 +21,7 @@ import secure
 import matricular
 import webhook 
 import sandbox_matricular
-
+import cadastrar
 # ──────────────────────────────────────────────────────────
 # Instância FastAPI
 # ──────────────────────────────────────────────────────────
@@ -59,6 +59,7 @@ app.include_router(matricular.router,   prefix="/api",         tags=["Matrícula
 # CORREÇÃO: Adicionada uma vírgula entre o prefixo e as tags
 app.include_router(webhook.router,      prefix="/api",         tags=["Webhooks"])
 app.include_router(sandbox_matricular.router, prefix="/sandbox", tags=["sandbox"])
+app.include_router(cadastrar.router, tags=["cadastrar"])
 
 
 # ──────────────────────────────────────────────────────────
