@@ -18,28 +18,28 @@ from matricular import _log, matricular_aluno_final, PENDING_ENROLLMENTS
 router = APIRouter()
 
 # ──────────────────────────────────────────────────────────
-# ATENÇÃO: Valores hardcoded - MUITO CUIDADO EM PRODUÇÃO!
-# Substitua os placeholders pelos seus valores reais.
+# Variáveis de Ambiente (Puxadas via os.getenv)
+# Certifique-se de que estas variáveis estão configuradas no seu ambiente Render.com
 # ──────────────────────────────────────────────────────────
-MP_ACCESS_TOKEN = os.getenv ("MP_ACCESS_TOKEN") 
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1377838283975036928/IgVvwyrBBWflKyXbIU9dgH4PhLwozHzrf-nJpj3w7dsZC-Ds9qN8_Toym3Tnbj-3jdU4" # <--- SEU URL DE WEBHOOK DO DISCORD
+MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 # ──────────────────────────────────────────────────────────
-# Configuração Mercado Pago (repetido para garantir que o webhook.py funcione independentemente)
+# Configuração Mercado Pago
 # ──────────────────────────────────────────────────────────
-if MP_ACCESS_TOKEN != "SEU_ACCESS_TOKEN_DO_MERCADO_PAGO": # Verifica se o token foi realmente configurado
-    mercadopago.configure({
+if not MP_ACCESS_TOKEN:
+    _log("ERRO: MP_ACCESS_TOKEN não configurado para webhook.py. A integração com Mercado Pago não funcionará.")
+else:
+    mercadopago.config({
         "access_token": MP_ACCESS_TOKEN
     })
-else:
-    _log("AVISO: MP_ACCESS_TOKEN não configurado no código para webhook.py.")
 
 # ──────────────────────────────────────────────────────────
 # Função para enviar mensagem para o Discord
 # ──────────────────────────────────────────────────────────
 def send_discord_notification(message: str, success: bool = True):
-    if not DISCORD_WEBHOOK_URL or DISCORD_WEBHOOK_URL == "https://discord.com/api/webhooks/137783838283975036928/IgVvwyrBBWflKyXbIU9dgH4PhLwozHzrf-nJpj3w7dsZC-Ds9qN8_Toym3Tnbj-3jdU4":
-        _log("AVISO: DISCORD_WEBHOOK_URL não configurada no código. Notificação do Discord desabilitada.")
+    if not DISCORD_WEBHOOK_URL:
+        _log("AVISO: DISCORD_WEBHOOK_URL não configurada. Notificação do Discord desabilitada.")
         return
 
     color = 3066993 if success else 15158332 # Green for success, Red for error
@@ -56,7 +56,7 @@ def send_discord_notification(message: str, success: bool = True):
     }
     try:
         response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5)
-        response.raise_for_status() # Levanta um erro para status HTTP ruins (4xx ou 5xx)
+        response.raise_for_status()
         _log(f"Notificação Discord enviada: {message}")
     except requests.exceptions.RequestException as e:
         _log(f"ERRO ao enviar notificação Discord: {e}")
@@ -81,24 +81,20 @@ async def mercadopago_webhook(request: Request):
 
     try:
         if topic == 'preapproval':
-            # Detalhes de uma assinatura/pré-aprovação
             preapproval_info = mercadopago.preapproval.get(id)
             status = preapproval_info.body.get("status")
             payer_email = preapproval_info.body.get("payer_email")
-            external_reference = preapproval_info.body.get("external_reference") # Nosso pending_enrollment_id
+            external_reference = preapproval_info.body.get("external_reference")
 
             _log(f"[MP Webhook] Assinatura ID: {id}, Status: {status}, Payer: {payer_email}, External Ref: {external_reference}")
 
-            # Verifique se o external_reference existe nos dados pendentes
             pending_data = PENDING_ENROLLMENTS.get(external_reference)
             if not pending_data:
                 _log(f"[MP Webhook] Aluno pendente não encontrado para external_reference: {external_reference}. Possível webhook duplicado ou dado expirado.")
                 send_discord_notification(f"Webhook de Assinatura Recebido: Status {status} para {payer_email}. ID de Ref. Externa '{external_reference}' não encontrado no sistema. Pode ser duplicado ou expirado.", success=False)
-                return {"status": "success", "message": "External reference not found or already processed."}, 200 # Responda 200 OK para o MP
+                return {"status": "success", "message": "External reference not found or already processed."}, 200
 
             if status == 'authorized':
-                # O pagamento inicial da assinatura foi aprovado
-                # AQUI É ONDE VOCÊ CONFIRMA A MATRÍCULA DEFINITIVAMENTE NO SEU SISTEMA
                 if pending_data.get("status") == "matriculado":
                     _log(f"[MP Webhook] Aluno {external_reference} já matriculado. Ignorando webhook duplicado.")
                     send_discord_notification(f"Webhook de Assinatura Recebido: Status {status} para {payer_email}. Aluno '{pending_data['nome']}' já estava matriculado. (ID: {external_reference})", success=True)
@@ -107,14 +103,12 @@ async def mercadopago_webhook(request: Request):
                 _log(f"Assinatura APROVADA para aluno_id: {external_reference}. Finalizando matrícula...")
                 
                 try:
-                    # Chamar a função de matrícula final do matricular.py
                     aluno_id, cpf, disciplinas_ids = matricular_aluno_final(
                         nome=pending_data["nome"],
                         whatsapp=pending_data["whatsapp"],
                         email=pending_data["email"],
                         cursos_nomes=pending_data["cursos_nomes"]
                     )
-                    # Atualizar o status no armazenamento temporário (ou no DB)
                     pending_data["status"] = "matriculado"
                     pending_data["aluno_id"] = aluno_id
                     pending_data["cpf"] = cpf
@@ -124,7 +118,6 @@ async def mercadopago_webhook(request: Request):
                 except Exception as e:
                     _log(f"ERRO ao finalizar matrícula para {external_reference}: {str(e)}")
                     send_discord_notification(f"⚠️ ERRO na Matrícula Final! ⚠️\nAluno: {pending_data['nome']}\nStatus MP: Aprovado\nErro: {str(e)}\nID Ref. Externa: {external_reference}", success=False)
-                    # Você pode querer tentar novamente mais tarde ou notificar um admin.
 
             elif status == 'pending':
                 _log(f"Assinatura PENDENTE para aluno_id: {external_reference}.")
@@ -138,16 +131,10 @@ async def mercadopago_webhook(request: Request):
                 _log(f"Assinatura REJEITADA para aluno_id: {external_reference}.")
                 pending_data["status"] = "payment_rejected"
                 send_discord_notification(f"Assinatura REJEITADA para {pending_data['nome']}.", success=False)
-            # Adicionar outras lógicas para 'paused' etc.
 
             return {"status": "success", "message": "Webhook de pré-aprovação processado."}, 200
 
         elif topic == 'payment':
-            # Notificações de pagamentos individuais (pode ser para as recorrências futuras)
-            # Para o fluxo de matrícula inicial, o 'preapproval' é o mais importante.
-            # Você pode buscar o payment_info e logar se desejar.
-            # payment_info = mercadopago.payment.get(id)
-            # _log(f"[MP Webhook] Pagamento ID: {id}, Status: {payment_info.body.get('status')}")
             return {"status": "success", "message": "Webhook de pagamento processado (ignorando para matrícula inicial)."}, 200
 
         else:
@@ -176,12 +163,10 @@ async def pagamento_status(request: Request):
     collection_id = request.query_params.get("collection_id")
     collection_status = request.query_params.get("collection_status")
     payment_id = request.query_params.get("payment_id")
-    external_reference = request.query_params.get("external_reference") # Seu pending_enrollment_id
+    external_reference = request.query_params.get("external_reference")
 
     _log(f"[MP Redirect] Status: {status}, Collection ID: {collection_id}, External Ref: {external_reference}")
 
-    # Você pode redirecionar para uma página de sucesso/erro no front-end
-    # ou exibir uma mensagem simples aqui.
     if collection_status == "approved":
         message = f"Pagamento aprovado! Sua matrícula está sendo processada. Você receberá um e-mail de confirmação em breve."
     elif collection_status == "pending":
@@ -189,9 +174,5 @@ async def pagamento_status(request: Request):
     else:
         message = f"Pagamento não aprovado. Status: {collection_status}. Por favor, tente novamente ou entre em contato."
     
-    # Para a página de "Obrigado", você pode passar esses parâmetros via URL
-    # e a página de "Obrigado" pode exibir a mensagem apropriada.
-    # Por exemplo, redirecione para: /obrigado?status=approved&ref=...
-    # Ou simplesmente retorne a mensagem aqui, já que o usuário será redirecionado para a THANK_YOU_PAGE_URL
     return {"message": message}
 
