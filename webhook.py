@@ -180,26 +180,28 @@ async def mercadopago_webhook(request: Request):
     is_sandbox_transaction = False
 
     # Try fetching with production SDK first
+    # This block now correctly checks for None before accessing .get()
     if sdk_prod:
         try:
             if topic == 'preapproval':
                 response_obj = sdk_prod.preapproval().get(resource_id)
             elif topic == 'payment':
                 response_obj = sdk_prod.payment().get(resource_id)
+            elif topic == 'merchant_order': # NEW: Handle merchant_order topic
+                response_obj = sdk_prod.merchant_orders().get(resource_id)
             else:
                 response_obj = None # Topic not handled by SDK methods
             
-            # Check if response_obj is not None before calling .get()
             if response_obj and response_obj.get("status") in [200, 201]:
                 sdk_to_use = sdk_prod
                 resource_info_dict = response_obj
                 _log(f"Recurso {resource_id} encontrado com SDK de PRODUÇÃO.")
             elif response_obj and response_obj.get("status") == 404:
                 _log(f"Recurso {resource_id} NÃO encontrado com SDK de PRODUÇÃO (404). Tentando SANDBOX...")
-            elif response_obj: # Other status codes from production SDK
+            elif response_obj:
                 status_log = response_obj.get('status')
                 _log(f"Erro inesperado ao buscar recurso {resource_id} com SDK de PRODUÇÃO. Status: {status_log}. Tentando SANDBOX...")
-            else: # response_obj is None or topic not handled
+            else:
                 _log(f"SDK de PRODUÇÃO não retornou objeto para {resource_id} ou tópico {topic} não suportado. Tentando SANDBOX...")
 
         except requests.exceptions.RequestException as e:
@@ -217,10 +219,11 @@ async def mercadopago_webhook(request: Request):
                 response_obj = sdk_test.preapproval().get(resource_id)
             elif topic == 'payment':
                 response_obj = sdk_test.payment().get(resource_id)
+            elif topic == 'merchant_order': # NEW: Handle merchant_order topic
+                response_obj = sdk_test.merchant_orders().get(resource_id)
             else:
                 response_obj = None # Topic not handled by SDK methods
 
-            # Check if response_obj is not None before calling .get()
             if response_obj and response_obj.get("status") in [200, 201]:
                 sdk_to_use = sdk_test
                 resource_info_dict = response_obj
@@ -229,7 +232,6 @@ async def mercadopago_webhook(request: Request):
             elif response_obj and response_obj.get("status") == 404:
                 _log(f"Recurso {resource_id} NÃO encontrado com SDK de TESTE (404).")
             else:
-                # Log the status if it's not 200/201/404 for better debugging
                 status_log = response_obj.get('status')
                 _log(f"Erro inesperado ao buscar recurso {resource_id} com SDK de TESTE. Status: {status_log}.")
         except requests.exceptions.RequestException as e:
@@ -240,7 +242,7 @@ async def mercadopago_webhook(request: Request):
         except Exception as e:
             _log(f"Erro genérico ao buscar recurso {resource_id} com SDK de TESTE: {e}.")
 
-    if not sdk_to_use or not resource_info_dict: # Ensure resource_info_dict is populated
+    if not sdk_to_use or not resource_info_dict:
         _log(f"ERRO: Recurso {resource_id} não encontrado com nenhum SDK (Produção ou Teste) ou dados inválidos. Notificação não processada.")
         send_discord_notification(f"⚠️ ERRO no Webhook MP! ⚠️\nRecurso '{resource_id}' (Tópico: '{topic}') NÃO ENCONTRADO com nenhum SDK (Produção/Teste) ou dados inválidos. Verifique tokens e IDs.", success=False)
         return {"status": "error", "message": "Resource not found or invalid data"}, 200
@@ -262,8 +264,6 @@ async def mercadopago_webhook(request: Request):
                 return {"status": "error", "message": "External reference missing in notification"}, 200
 
             # --- RECUPERAÇÃO DE DADOS DO ALUNO ---
-            # Para produção, você buscaria esses dados de um banco de dados persistente.
-            # Para sandbox, vamos tentar recuperar do PENDING_ENROLLMENTS do sandbox_matricular.
             student_data_for_cadastrar = {
                 "nome": "Nome Desconhecido (via Webhook)",
                 "whatsapp": "00000000000",
@@ -328,7 +328,6 @@ async def mercadopago_webhook(request: Request):
             _log(f"Pagamento MP ID: {mp_payment_id}, Status MP: {mp_status}, Payer: {payer_email}, External Ref: {external_reference}, Valor: {transaction_amount} (Sandbox: {is_sandbox_transaction})")
 
             # --- RECUPERAÇÃO DE DADOS DO ALUNO PARA PAGAMENTO ---
-            # Similar ao preapproval, buscar dados do aluno se o external_reference for usado.
             student_data_for_cadastrar = {
                 "nome": "Nome Desconhecido (via Webhook)",
                 "whatsapp": "00000000000",
@@ -372,17 +371,82 @@ async def mercadopago_webhook(request: Request):
                     success=(mp_status == 'approved')
                 )
 
+        # NEW: Handle 'merchant_order' topic
+        elif topic == 'merchant_order':
+            merchant_order_data = resource_info_dict.get("response", {})
+            order_status = merchant_order_data.get("status")
+            external_reference = merchant_order_data.get("external_reference")
+            merchant_order_id = merchant_order_data.get("id")
+            
+            _log(f"Merchant Order ID: {merchant_order_id}, Status: {order_status}, External Ref: {external_reference} (Sandbox: {is_sandbox_transaction})")
+
+            # Iterate through payments within the merchant order to find approved ones
+            payments = merchant_order_data.get("payments", [])
+            approved_payment_found = False
+            for payment in payments:
+                if payment.get("status") == "approved":
+                    approved_payment_found = True
+                    payer_email = payment.get("payer", {}).get("email")
+                    transaction_amount = payment.get("transaction_amount")
+                    mp_payment_id = payment.get("id")
+
+                    _log(f"Pagamento APROVADO encontrado na Merchant Order. ID: {mp_payment_id}, Payer: {payer_email}, Valor: {transaction_amount}")
+
+                    # --- RECUPERAÇÃO DE DADOS DO ALUNO PARA MERCHANT_ORDER ---
+                    student_data_for_cadastrar = {
+                        "nome": "Nome Desconhecido (via Webhook)",
+                        "whatsapp": "00000000000",
+                        "email": payer_email,
+                        "cursos": ["Curso Padrão (via Webhook)"]
+                    }
+                    if is_sandbox_transaction:
+                        try:
+                            from sandbox_matricular import PENDING_ENROLLMENTS as SANDBOX_PENDING_ENROLLMENTS
+                            pending_data = SANDBOX_PENDING_ENROLLMENTS.get(external_reference)
+                            if pending_data:
+                                student_data_for_cadastrar = {
+                                    "nome": pending_data.get("nome"),
+                                    "whatsapp": pending_data.get("whatsapp"),
+                                    "email": pending_data.get("email"),
+                                    "cursos": pending_data.get("cursos_nomes")
+                                }
+                                _log(f"Dados do aluno recuperados de PENDING_ENROLLMENTS (Sandbox) para {external_reference} (Merchant Order).")
+                            else:
+                                _log(f"AVISO: Dados de matrícula pendente NÃO encontrados em PENDING_ENROLLMENTS (Sandbox) para {external_reference} (Merchant Order). Usando dados genéricos.")
+                        except ImportError:
+                            _log("AVISO: Não foi possível importar PENDING_ENROLLMENTS de sandbox_matricular para merchant_order. Certifique-se de que o ambiente de teste está configurado corretamente.")
+                        except Exception as e:
+                            _log(f"ERRO ao tentar recuperar dados de PENDING_ENROLLMENTS (Sandbox) para merchant_order: {e}")
+                    else:
+                        _log(f"INFO: Transação de PRODUÇÃO. Dados do aluno para {external_reference} (Merchant Order) devem ser buscados de um banco de dados persistente.")
+                        # TODO: Implementar busca em banco de dados para produção aqui
+                    
+                    # Chamar o endpoint /cadastrar para cada pagamento aprovado na merchant_order
+                    call_cadastrar_endpoint(student_data_for_cadastrar, external_reference, is_sandbox_transaction)
+                    break # Processa apenas o primeiro pagamento aprovado se houver múltiplos
+            
+            if not approved_payment_found:
+                _log(f"Nenhum pagamento aprovado encontrado na Merchant Order {merchant_order_id}. Status da ordem: {order_status}.")
+                send_discord_notification(
+                    f"ℹ️ Merchant Order MP Recebida! ℹ️\n"
+                    f"ID Ordem MP: {merchant_order_id}\n"
+                    f"Status da Ordem: `{order_status}`\n"
+                    f"Nenhum pagamento aprovado encontrado ainda.\n"
+                    f"Ref. Externa: {external_reference or 'N/A'}",
+                    success=False # Not a full success if no approved payment
+                )
+
         else:
             _log(f"Tópico desconhecido ou não tratado: {topic}. Resource ID: {resource_id}. Ignorando.")
             send_discord_notification(f"❓ Webhook MP com Tópico Desconhecido: '{topic}' (ID Recurso: {resource_id}). Ignorado.", success=False)
 
         return {"status": "success", "message": "Webhook notification processed."}, 200
 
-    except requests.exceptions.RequestException as e: # Catch RequestException for network/HTTP errors
+    except requests.exceptions.RequestException as e:
         _log(f"ERRO no Webhook MP (RequestException): {e} - ID Recurso: {resource_id}, Tópico: {topic}")
         send_discord_notification(f"⚠️ ERRO GRAVE no Webhook MP (Conexão)! ⚠️\nErro: {str(e)}\nID Recurso: {resource_id}\nTópico: {topic}", success=False)
         return {"status": "error", "message": f"Network error processing webhook: {str(e)}"}, 200
-    except Exception as e: # Catch general Exception for other errors
+    except Exception as e:
         _log(f"ERRO GERAL INESPERADO ao processar webhook: {str(e)} (Tipo: {type(e)}) - ID Recurso: {resource_id}, Tópico: {topic}")
         send_discord_notification(f"⚠️ ERRO INTERNO GRAVE no Webhook MP! ⚠️\nErro: {str(e)}\nID Recurso: {resource_id}\nTópico: {topic}", success=False)
         return {"status": "error", "message": f"Internal error processing webhook: {str(e)}"}, 200
