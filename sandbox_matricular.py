@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 import uuid 
 from cursos import CURSOS_OM 
 import mercadopago 
-
 import json 
 
 router = APIRouter()
@@ -29,7 +28,7 @@ UNIDADE_ID = os.getenv("UNIDADE_ID") # Mantenha ou use um UNIDADE_ID de teste se
 MP_TEST_ACCESS_TOKEN = os.getenv("MP_TEST_ACCESS_TOKEN") 
 
 THANK_YOU_PAGE_URL = os.getenv("THANK_YOU_PAGE_URL_SANDBOX", os.getenv("THANK_YOU_PAGE_URL")) # Permite URL de obrigado específica para sandbox
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "") # Chave da API Gemini (pode ser a mesma)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "") # Chave da API Gemini (pode ser a mesma, com valor padrão)
 
 # ──────────────────────────────────────────────────────────
 # Armazenamento Temporário de Matrículas Pendentes
@@ -245,7 +244,7 @@ def matricular_aluno_final(nome:str, whatsapp:str, email:Optional[str], cursos_n
 # ──────────────────────────────────────────────────────────
 # Endpoint de Matrícula (Inicia Pagamento MP - SANDBOX)
 # ──────────────────────────────────────────────────────────
-@router.post("/") # Este endpoint será montado em um prefixo como /sandbox/api no main_sandbox.py
+@router.post("/") 
 async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request): 
     nome = body.get("nome")
     whatsapp = body.get("whatsapp")
@@ -259,7 +258,7 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
     if not email: 
         _log("AVISO SANDBOX: Email não fornecido. Usando placeholder para Mercado Pago.")
         timestamp_uuid = uuid.uuid4().hex[:8]
-        email = f"user_{timestamp_uuid}@placeholder.ced.sandbox.com" # Email placeholder para sandbox
+        email = f"user_{timestamp_uuid}@placeholder.ced.sandbox.com" 
 
     curso_principal_nome = cursos_nomes[0] if cursos_nomes else "Matrícula Curso Online (Sandbox)"
     
@@ -283,12 +282,7 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
         _log(f"Matrícula pendente SANDBOX ID: {pending_enrollment_id} para {nome} armazenada.")
 
         base_url = str(request.base_url)
-        # Se este router for montado em /sandbox/api, a notification_url precisa refletir isso
-        # Ex: https://api.cedbrasilia.com.br/sandbox/api/webhook/mercadopago
-        # O ideal é que o main_sandbox.py defina o prefixo e o webhook.py de sandbox também seja montado lá.
-        # Por simplicidade, vamos assumir que o webhook de produção ainda é usado ou que o usuário adaptará.
-        # Para um teste mais isolado, um webhook de sandbox seria melhor.
-        notification_url_path = os.getenv("MP_SANDBOX_NOTIFICATION_PATH", "/api/webhook/mercadopago") # Permite customizar o path do webhook de sandbox
+        notification_url_path = os.getenv("MP_SANDBOX_NOTIFICATION_PATH", "/api/webhook/mercadopago") 
         notification_url = f"{base_url.rstrip('/')}{notification_url_path}"
         _log(f"URL de notificação SANDBOX para MP configurada como: {notification_url}")
 
@@ -309,10 +303,11 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
         
         _log(f"Criando assinatura MP DINÂMICA (SANDBOX) com dados: {preapproval_data}")
         preapproval_response_dict = sdk_matricular_sandbox.preapproval().create(preapproval_data)
+        # ADICIONAR LOG DA RESPOSTA COMPLETA DO MERCADO PAGO AQUI
+        _log(f"RESPOSTA COMPLETA DO MP SANDBOX (para debug do init_point): {preapproval_response_dict}")
         
         if preapproval_response_dict and preapproval_response_dict.get("status") == 201: 
             response_data = preapproval_response_dict.get("response", {})
-            # No sandbox, o init_point pode ser chamado de 'sandbox_init_point'
             init_point = response_data.get("sandbox_init_point", response_data.get("init_point"))
             mp_preapproval_id = response_data.get("id")
 
@@ -377,7 +372,7 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
 # ──────────────────────────────────────────────────────────
 # ENDPOINT: Gerar Descrição de Curso com Gemini API (SANDBOX)
 # ──────────────────────────────────────────────────────────
-@router.post("/generate-course-description") # Mantém o mesmo nome de rota dentro deste router
+@router.post("/generate-course-description") 
 async def generate_course_description_sandbox(body: dict):
     course_name = body.get("course_name")
 
