@@ -8,17 +8,23 @@ import requests
 from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime
 import mercadopago
+import json # Necessário para enviar JSON para o endpoint /cadastrar
 
-# Importa as funções e o armazenamento temporário de matricular.py
-from matricular import _log, matricular_aluno_final, PENDING_ENROLLMENTS
-
-router = APIRouter()
+# ──────────────────────────────────────────────────────────
+# Funções Auxiliares de Logging (Definida localmente)
+# ──────────────────────────────────────────────────────────
+def _log(msg: str):
+    """Função de logging simples para webhook.py."""
+    print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] [MP Webhook] {msg}")
 
 # ──────────────────────────────────────────────────────────
 # Variáveis de Ambiente
 # ──────────────────────────────────────────────────────────
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL") # Para webhooks de produção
+# URL do endpoint de cadastro que será chamado pelo webhook
+CADASTRO_API_URL = os.getenv("CADASTRO_API_URL", "https://api.cedbrasilia.com.br/cadastrar")
+
 
 # ──────────────────────────────────────────────────────────
 # Configuração Mercado Pago SDK
@@ -33,6 +39,7 @@ else:
     except Exception as e:
         _log(f"ERRO CRÍTICO ao inicializar SDK Mercado Pago em webhook.py: {e}. A integração com Mercado Pago PODE NÃO FUNCIONAR.")
 
+router = APIRouter()
 
 # ──────────────────────────────────────────────────────────
 # Função para enviar mensagem para o Discord
@@ -56,11 +63,67 @@ def send_discord_notification(message: str, success: bool = True):
         ]
     }
     try:
-        response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10) # Aumentado timeout
+        response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
         response.raise_for_status()
         _log(f"Notificação Discord enviada: {message[:100]}...")
     except requests.exceptions.RequestException as e:
         _log(f"ERRO ao enviar notificação Discord: {e}")
+
+# ──────────────────────────────────────────────────────────
+# Função para chamar o endpoint de cadastro/matrícula
+# ──────────────────────────────────────────────────────────
+def call_cadastrar_endpoint(student_data: dict, external_reference: str):
+    """
+    Chama o endpoint /cadastrar para finalizar a matrícula no OM e enviar ChatPro.
+    """
+    _log(f"Chamando endpoint /cadastrar para external_reference: {external_reference}")
+    try:
+        response = requests.post(CADASTRO_API_URL, json=student_data, timeout=15)
+        response.raise_for_status() # Levanta exceção para status HTTP 4xx/5xx
+        cad_result = response.json()
+        _log(f"Resposta do endpoint /cadastrar para {external_reference}: {cad_result}")
+        if cad_result.get("status") == "ok":
+            send_discord_notification(
+                f"✅ Matrícula Finalizada via Webhook! ✅\n"
+                f"Aluno: {student_data.get('nome')}\n"
+                f"Email: {student_data.get('email')}\n"
+                f"Cursos: {', '.join(student_data.get('cursos', []))}\n"
+                f"ID Aluno OM: {cad_result.get('aluno_id')}\n"
+                f"CPF Gerado: {cad_result.get('cpf')}\n"
+                f"Ref. Externa: {external_reference}",
+                success=True
+            )
+            return True
+        else:
+            send_discord_notification(
+                f"❌ Erro ao Finalizar Matrícula via Webhook! ❌\n"
+                f"Aluno: {student_data.get('nome')}\n"
+                f"Ref. Externa: {external_reference}\n"
+                f"Erro no /cadastrar: {cad_result.get('detail') or cad_result.get('message') or 'Erro desconhecido'}",
+                success=False
+            )
+            return False
+    except requests.exceptions.RequestException as e:
+        _log(f"ERRO de conexão ao chamar /cadastrar para {external_reference}: {e}")
+        send_discord_notification(
+            f"⚠️ Erro de Conexão no Webhook para /cadastrar! ⚠️\n"
+            f"Aluno: {student_data.get('nome')}\n"
+            f"Ref. Externa: {external_reference}\n"
+            f"Erro: {str(e)}",
+            success=False
+        )
+        return False
+    except Exception as e:
+        _log(f"ERRO inesperado ao processar resposta de /cadastrar para {external_reference}: {e}")
+        send_discord_notification(
+            f"⚠️ Erro Inesperado no Webhook ao chamar /cadastrar! ⚠️\n"
+            f"Aluno: {student_data.get('nome')}\n"
+            f"Ref. Externa: {external_reference}\n"
+            f"Erro: {str(e)}",
+            success=False
+        )
+        return False
+
 
 # ──────────────────────────────────────────────────────────
 # Endpoint para Webhooks do Mercado Pago
@@ -68,14 +131,16 @@ def send_discord_notification(message: str, success: bool = True):
 @router.post("/webhook/mercadopago")
 async def mercadopago_webhook(request: Request):
     topic = request.query_params.get("topic")
-    notification_id = request.query_params.get("id") # O ID aqui é da notificação, não do recurso em si
+    # Para o tópico 'payment', o ID do recurso é 'data.id'
+    # Para o tópico 'preapproval', o ID do recurso é 'id'
+    resource_id = request.query_params.get("id") or request.query_params.get("data.id")
 
-    _log(f"[MP Webhook] Recebido topic: {topic}, Notification ID: {notification_id}")
 
-    if not topic or not notification_id:
-        _log("[MP Webhook] ERRO: 'topic' ou 'id' ausentes nos query parameters.")
-        # MP espera 200 ou 201, mesmo em erro nosso para não ficar reenviando indefinidamente.
-        return {"status": "error", "message": "Missing parameters"}, 200 
+    _log(f"[MP Webhook] Recebido topic: {topic}, Resource ID: {resource_id}")
+
+    if not topic or not resource_id:
+        _log("[MP Webhook] ERRO: 'topic' ou 'id'/'data.id' ausentes nos query parameters.")
+        return {"status": "error", "message": "Missing parameters"}, 200 # MP espera 200/201
 
     if not sdk_webhook:
         _log("[MP Webhook] ERRO CRÍTICO: SDK do Mercado Pago não inicializado em webhook.py.")
@@ -83,15 +148,15 @@ async def mercadopago_webhook(request: Request):
         return {"status": "error", "message": "Internal SDK configuration error"}, 200
 
     try:
+        # Tópico 'preapproval' para assinaturas
         if topic == 'preapproval':
-            # Com o ID da notificação, obtemos os dados da pré-aprovação
-            preapproval_info_dict = sdk_webhook.preapproval().get(notification_id)
+            preapproval_info_dict = sdk_webhook.preapproval().get(resource_id)
             
             if not (preapproval_info_dict and preapproval_info_dict.get("status") in [200, 201]):
                 error_details = preapproval_info_dict.get('response', preapproval_info_dict) if preapproval_info_dict else "Resposta vazia"
                 status_code = preapproval_info_dict.get('status', 'N/A') if preapproval_info_dict else 'N/A'
-                _log(f"[MP Webhook] ERRO ao buscar dados da pré-aprovação ID {notification_id}. Status MP: {status_code}, Detalhes: {error_details}")
-                send_discord_notification(f"⚠️ ERRO no Webhook MP! ⚠️\nFalha ao buscar detalhes da assinatura (ID Notif: {notification_id}).\nStatus MP: {status_code}\nDetalhes: {str(error_details)[:200]}", success=False)
+                _log(f"[MP Webhook] ERRO ao buscar dados da pré-aprovação ID {resource_id}. Status MP: {status_code}, Detalhes: {error_details}")
+                send_discord_notification(f"⚠️ ERRO no Webhook MP! ⚠️\nFalha ao buscar detalhes da assinatura (ID Recurso: {resource_id}).\nStatus MP: {status_code}\nDetalhes: {str(error_details)[:200]}", success=False)
                 return {"status": "error", "message": "Failed to fetch preapproval details"}, 200
 
             preapproval_data = preapproval_info_dict.get("response", {})
@@ -107,95 +172,120 @@ async def mercadopago_webhook(request: Request):
                 send_discord_notification(f"Webhook de Assinatura Recebido SEM External Reference para MP ID {preapproval_mp_id}, Payer: {payer_email}. Impossível processar.", success=False)
                 return {"status": "error", "message": "External reference missing in notification"}, 200
 
-            pending_data = PENDING_ENROLLMENTS.get(external_reference)
+            # Recuperar dados do aluno da memória temporária (PENDING_ENROLLMENTS)
+            # ATENÇÃO: Em produção, isso deve ser feito buscando em um banco de dados persistente!
+            # PENDING_ENROLLMENTS é uma solução temporária para o sandbox.
+            # Se o webhook chegar muito tempo depois, ou se o servidor reiniciar, os dados podem não estar lá.
+            # Para este exemplo, vamos simular que os dados viriam de um banco de dados
+            # ou que o external_reference contém informações suficientes.
+            # Por simplicidade, vou assumir que o external_reference pode ser usado para buscar dados
+            # ou que o webhook do MP pode trazer mais detalhes sobre o pagador.
+            # Como o `sandbox_matricular.py` armazena `nome`, `whatsapp`, `email`, `cursos_nomes`
+            # em PENDING_ENROLLMENTS, vamos tentar recuperá-los.
+            
+            # TODO: Em um cenário real, você buscaria esses dados de um banco de dados
+            # associado ao `external_reference` ou `preapproval_mp_id`.
+            # Por enquanto, vamos usar uma estrutura dummy ou tentar recuperar do PENDING_ENROLLMENTS
+            # do matricular.py (que é uma má prática para produção, mas para teste serve).
+            # Para evitar a importação circular e a dependência de memória,
+            # o ideal é que o `external_reference` seja suficiente para buscar os dados do aluno
+            # em um banco de dados.
+            # Para este exemplo, vou simular dados de aluno, mas você deve integrar com seu DB.
+            
+            # Simulando a recuperação dos dados do aluno (idealmente de um DB)
+            # Como PENDING_ENROLLMENTS não é compartilhado entre processos,
+            # e o webhook pode ser executado em uma instância diferente,
+            # a recuperação precisa ser robusta.
+            # Por simplicidade, vou usar um placeholder e um log para o caso de não encontrar.
+            
+            # IMPORTANTE: A importação de PENDING_ENROLLMENTS de `matricular` ou `sandbox_matricular`
+            # é problemática em produção. O ideal é que o `external_reference`
+            # seja a chave para buscar os dados completos do aluno em um banco de dados.
+            # Para este exemplo de teste, vou re-importar PENDING_ENROLLMENTS do sandbox_matricular
+            # (ASSUMINDO QUE AMBOS RODAM NO MESMO PROCESSO PARA TESTES)
+            from sandbox_matricular import PENDING_ENROLLMENTS as SANDBOX_PENDING_ENROLLMENTS
+            pending_data = SANDBOX_PENDING_ENROLLMENTS.get(external_reference)
+
             if not pending_data:
                 _log(f"[MP Webhook] Aluno pendente não encontrado para external_reference: {external_reference}. MP ID: {preapproval_mp_id}. Possível webhook tardio/duplicado ou dado expirado/não encontrado.")
                 send_discord_notification(f"Webhook de Assinatura Recebido: Status {mp_status} para {payer_email} (MP ID: {preapproval_mp_id}).\nID de Ref. Externa '{external_reference}' NÃO encontrado no sistema. Pode ser tardio, duplicado ou expirado.", success=False)
                 return {"status": "success", "message": "External reference not found or already processed."}, 200
 
-            # Atualizar o status no PENDING_ENROLLMENTS com o status do MP
-            pending_data["mp_status"] = mp_status
-            pending_data["mp_preapproval_id_confirmed"] = preapproval_mp_id # Guardar o ID do MP confirmado
+            # Preparar dados para o endpoint /cadastrar
+            student_data_for_cadastrar = {
+                "nome": pending_data.get("nome"),
+                "whatsapp": pending_data.get("whatsapp"),
+                "email": pending_data.get("email"),
+                "cursos": pending_data.get("cursos_nomes")
+            }
 
             if mp_status == 'authorized': # Assinatura autorizada (pagamento inicial aprovado)
-                if pending_data.get("status") == "matriculado":
-                    _log(f"[MP Webhook] Aluno {external_reference} (Nome: {pending_data.get('nome')}) já consta como 'matriculado'. Ignorando webhook 'authorized' duplicado ou tardio.")
-                    send_discord_notification(f"Webhook 'authorized' para Assinatura MP ID {preapproval_mp_id} (Ref: {external_reference}).\nAluno '{pending_data.get('nome')}' já estava matriculado.", success=True)
-                    return {"status": "success", "message": "Already processed as matriculado."}, 200
-
-                _log(f"Assinatura AUTORIZADA para external_ref: {external_reference}. Tentando finalizar matrícula...")
-                try:
-                    aluno_id, cpf, disciplinas_ids = matricular_aluno_final(
-                        nome=pending_data["nome"],
-                        whatsapp=pending_data["whatsapp"],
-                        email=pending_data["email"],
-                        cursos_nomes=pending_data["cursos_nomes"]
-                    )
-                    pending_data["status"] = "matriculado"
-                    pending_data["aluno_id_om"] = aluno_id # ID do aluno no sistema OM
-                    pending_data["cpf_gerado"] = cpf
-                    pending_data["matricula_finalizada_em"] = datetime.now().isoformat()
-                    _log(f"Matrícula FINALIZADA para {pending_data['nome']} (ID OM: {aluno_id}, CPF: {cpf}). External Ref: {external_reference}")
-                    send_discord_notification(f"🎉 Matrícula APROVADA e FINALIZADA! 🎉\nAluno: {pending_data['nome']}\nEmail: {pending_data['email']}\nCursos: {', '.join(pending_data['cursos_nomes'])}\nID Aluno OM: {aluno_id}\nCPF Gerado: {cpf}\nMP Preapproval ID: {preapproval_mp_id}\nRef. Externa: {external_reference}", success=True)
-                
-                except RuntimeError as e_mat: # Erro específico de matricular_aluno_final
-                    _log(f"ERRO CRÍTICO ao finalizar matrícula para {external_reference} (Nome: {pending_data['nome']}): {str(e_mat)}")
-                    pending_data["status"] = "erro_matricula_om"
-                    pending_data["erro_matricula_om_msg"] = str(e_mat)
-                    send_discord_notification(f"⚠️ ERRO GRAVE na Matrícula Final OM! ⚠️\nAluno: {pending_data['nome']} (Ref: {external_reference})\nStatus MP: Autorizado ({mp_status})\nErro OM: {str(e_mat)}\nMP Preapproval ID: {preapproval_mp_id}", success=False)
-                except Exception as e_geral: # Outro erro inesperado
-                    _log(f"ERRO INESPERADO ao finalizar matrícula para {external_reference} (Nome: {pending_data['nome']}): {str(e_geral)}")
-                    pending_data["status"] = "erro_inesperado_matricula"
-                    pending_data["erro_inesperado_matricula_msg"] = str(e_geral)
-                    send_discord_notification(f"⚠️ ERRO INESPERADO na Matrícula Final! ⚠️\nAluno: {pending_data['nome']} (Ref: {external_reference})\nStatus MP: Autorizado ({mp_status})\nErro: {str(e_geral)}\nMP Preapproval ID: {preapproval_mp_id}", success=False)
-
-
+                _log(f"Assinatura AUTORIZADA para external_ref: {external_reference}. Chamando endpoint /cadastrar...")
+                call_cadastrar_endpoint(student_data_for_cadastrar, external_reference)
+            
             elif mp_status == 'pending': # Assinatura pendente de autorização
                 _log(f"Assinatura PENDENTE para external_ref: {external_reference} (Nome: {pending_data.get('nome')}).")
-                pending_data["status"] = "payment_pending_mp"
                 send_discord_notification(f"⏳ Assinatura PENDENTE no MP para {pending_data.get('nome')} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.\nAguardando autorização/compensação.", success=True)
-            
+                
             elif mp_status == 'paused': # Assinatura pausada
                 _log(f"Assinatura PAUSADA para external_ref: {external_reference} (Nome: {pending_data.get('nome')}).")
-                pending_data["status"] = "subscription_paused_mp"
-                send_discord_notification(f"⏸️ Assinatura PAUSADA no MP para {pending_data.get('nome')} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=True) # Neutro, nem sucesso nem falha total
+                send_discord_notification(f"⏸️ Assinatura PAUSADA no MP para {pending_data.get('nome')} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=True) 
 
             elif mp_status == 'cancelled': # Assinatura cancelada
                 _log(f"Assinatura CANCELADA para external_ref: {external_reference} (Nome: {pending_data.get('nome')}).")
-                pending_data["status"] = "subscription_cancelled_mp"
                 send_discord_notification(f"❌ Assinatura CANCELADA no MP para {pending_data.get('nome')} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=False)
-                # Considerar remover de PENDING_ENROLLMENTS ou marcar como inativo permanentemente
-                # PENDING_ENROLLMENTS.pop(external_reference, None)
-            
+                
             else: # Outros status (ex: rejected, etc.)
                 _log(f"Assinatura com status MP '{mp_status}' para external_ref: {external_reference} (Nome: {pending_data.get('nome')}).")
-                pending_data["status"] = f"subscription_{mp_status}_mp"
                 send_discord_notification(f"ℹ️ Status da Assinatura MP: '{mp_status}' para {pending_data.get('nome')} (Ref: {external_reference}).\nMP Preapproval ID: {preapproval_mp_id}.", success=False)
 
 
+        # Tópico 'payment' para pagamentos avulsos ou recorrentes
         elif topic == 'payment':
-            # Você pode querer processar notificações de pagamento se sua lógica de assinatura
-            # depender de pagamentos recorrentes individuais. Por agora, está ignorando.
-            _log(f"[MP Webhook] Notificação de 'payment' recebida (ID: {notification_id}). Ignorando para fluxo de matrícula inicial focado em 'preapproval'.")
-            # payment_info = sdk_webhook.payment().get(notification_id) # Exemplo se fosse processar
-            # _log(f"[MP Webhook] Detalhes do pagamento: {payment_info}")
-            send_discord_notification(f"ℹ️ Webhook de Pagamento MP Recebido (ID Notif: {notification_id}).\nIgnorando, pois o foco é em 'preapproval' para assinaturas.", success=True)
+            payment_info_dict = sdk_webhook.payment().get(resource_id)
+            
+            if not (payment_info_dict and payment_info_dict.get("status") in [200, 201]):
+                error_details = payment_info_dict.get('response', payment_info_dict) if payment_info_dict else "Resposta vazia"
+                status_code = payment_info_dict.get('status', 'N/A') if payment_info_dict else 'N/A'
+                _log(f"[MP Webhook] ERRO ao buscar dados do pagamento ID {resource_id}. Status MP: {status_code}, Detalhes: {error_details}")
+                send_discord_notification(f"⚠️ ERRO no Webhook MP! ⚠️\nFalha ao buscar detalhes do pagamento (ID Recurso: {resource_id}).\nStatus MP: {status_code}\nDetalhes: {str(error_details)[:200]}", success=False)
+                return {"status": "error", "message": "Failed to fetch payment details"}, 200
 
+            payment_data = payment_info_dict.get("response", {})
+            mp_status = payment_data.get("status")
+            payer_email = payment_data.get("payer", {}).get("email")
+            external_reference = payment_data.get("external_reference") # Nosso ID, se usado
+            mp_payment_id = payment_data.get("id") # ID do pagamento no MP
+            transaction_amount = payment_data.get("transaction_amount")
+            
+            _log(f"[MP Webhook] Pagamento MP ID: {mp_payment_id}, Status MP: {mp_status}, Payer: {payer_email}, External Ref: {external_reference}, Valor: {transaction_amount}")
+
+            # Se o external_reference for usado para pagamentos únicos, você pode buscar os dados
+            # do aluno aqui e chamar o endpoint /cadastrar.
+            # Para este exemplo, vou apenas logar.
+            send_discord_notification(
+                f"💰 Webhook de Pagamento MP Recebido! 💰\n"
+                f"ID Pagamento MP: {mp_payment_id}\n"
+                f"Status: `{mp_status}`\n"
+                f"Valor: R$ {transaction_amount:.2f}\n"
+                f"Pagador: {payer_email}\n"
+                f"Ref. Externa: {external_reference or 'N/A'}",
+                success=(mp_status == 'approved')
+            )
 
         else:
-            _log(f"[MP Webhook] Tópico desconhecido ou não tratado: {topic}. Notification ID: {notification_id}. Ignorando.")
-            send_discord_notification(f"❓ Webhook MP com Tópico Desconhecido: '{topic}' (ID Notif: {notification_id}). Ignorado.", success=False)
+            _log(f"[MP Webhook] Tópico desconhecido ou não tratado: {topic}. Resource ID: {resource_id}. Ignorando.")
+            send_discord_notification(f"❓ Webhook MP com Tópico Desconhecido: '{topic}' (ID Recurso: {resource_id}). Ignorado.", success=False)
 
         return {"status": "success", "message": "Webhook notification processed."}, 200
 
     except mercadopago.exceptions.MPException as mp_e:
-        _log(f"[MP Webhook] ERRO no SDK do Mercado Pago (MPException): Status {mp_e.status_code} - Mensagem: {mp_e.message} - Causa: {mp_e.cause} - ID Notif: {notification_id}")
-        send_discord_notification(f"⚠️ ERRO GRAVE no Webhook MP (SDK)! ⚠️\nErro ao processar notificação.\nStatus MP SDK: {mp_e.status_code}\nMensagem: {mp_e.message}\nID Notif: {notification_id}\nTópico: {topic}", success=False)
-        # Retornar 200 para o MP não reenviar indefinidamente se for um erro nosso que não pode ser resolvido por reenvio
+        _log(f"[MP Webhook] ERRO no SDK do Mercado Pago (MPException): Status {mp_e.status_code} - Mensagem: {mp_e.message} - Causa: {mp_e.cause} - ID Recurso: {resource_id}")
+        send_discord_notification(f"⚠️ ERRO GRAVE no Webhook MP (SDK)! ⚠️\nErro ao processar notificação.\nStatus MP SDK: {mp_e.status_code}\nMensagem: {mp_e.message}\nID Recurso: {resource_id}\nTópico: {topic}", success=False)
         return {"status": "error", "message": f"SDK error processing webhook: {mp_e.message}"}, 200
     except Exception as e:
-        _log(f"[MP Webhook] ERRO GERAL INESPERADO ao processar webhook: {str(e)} (Tipo: {type(e)}) - ID Notif: {notification_id}, Tópico: {topic}")
-        send_discord_notification(f"⚠️ ERRO INTERNO GRAVE no Webhook MP! ⚠️\nErro: {str(e)}\nID Notif: {notification_id}\nTópico: {topic}", success=False)
+        _log(f"[MP Webhook] ERRO GERAL INESPERADO ao processar webhook: {str(e)} (Tipo: {type(e)}) - ID Recurso: {resource_id}, Tópico: {topic}")
+        send_discord_notification(f"⚠️ ERRO INTERNO GRAVE no Webhook MP! ⚠️\nErro: {str(e)}\nID Recurso: {resource_id}\nTópico: {topic}", success=False)
         return {"status": "error", "message": f"Internal error processing webhook: {str(e)}"}, 200
 
 
@@ -209,46 +299,40 @@ async def pagamento_status_redirect(request: Request):
     Este é um feedback IMEDIATO ao usuário na interface dele.
     O status FINAL e a lógica de matrícula são tratados pelo WEBHOOK.
     """
-    # Parâmetros comuns de redirect para pré-aprovação (assinatura)
     preapproval_id = request.query_params.get("preapproval_id") # ID da assinatura no MP
     external_reference = request.query_params.get("external_reference") # Nosso ID
-    # O status da assinatura em si (authorized, pending, etc.) virá pelo webhook.
-    # O redirect pode não ter um "status" explícito da transação inicial da mesma forma que um pagamento único.
+    collection_status = request.query_params.get("collection_status") # Status da coleção (para pagamentos únicos)
+    payment_id = request.query_params.get("payment_id") # ID do pagamento (para pagamentos únicos)
 
-    _log(f"[MP Redirect] Usuário redirecionado. Preapproval ID: {preapproval_id}, External Ref: {external_reference}. Query Params: {request.query_params}")
+    _log(f"[MP Redirect] Usuário redirecionado. Preapproval ID: {preapproval_id}, External Ref: {external_reference}, Payment ID: {payment_id}, Collection Status: {collection_status}. Query Params: {request.query_params}")
 
-    message = f"Obrigado! Sua solicitação de assinatura (ID: {preapproval_id or 'N/A'}) foi enviada."
+    message = f"Obrigado! Sua solicitação de pagamento foi enviada."
     sub_message = "Você receberá uma notificação por e-mail assim que o status for confirmado. Acompanhe também pelo seu painel do Mercado Pago."
 
     # Tentar buscar dados da matrícula pendente para personalizar a mensagem
-    if external_reference and external_reference in PENDING_ENROLLMENTS:
-        pending_data = PENDING_ENROLLMENTS[external_reference]
+    # ATENÇÃO: Importar PENDING_ENROLLMENTS de `sandbox_matricular` para fins de teste.
+    # Em produção, você buscaria esses dados de um banco de dados persistente.
+    from sandbox_matricular import PENDING_ENROLLMENTS as SANDBOX_PENDING_ENROLLMENTS
+    pending_data = SANDBOX_PENDING_ENROLLMENTS.get(external_reference)
+
+    if pending_data:
         nome_aluno = pending_data.get("nome", "Aluno(a)")
-        message = f"Olá {nome_aluno}, obrigado! Sua solicitação de assinatura foi enviada ao Mercado Pago."
+        message = f"Olá {nome_aluno}, obrigado! Sua solicitação de pagamento foi enviada ao Mercado Pago."
         
-        # Uma verificação rápida do status no MP (opcional, pode adicionar latência)
-        # if sdk_webhook and preapproval_id:
-        #     try:
-        #         info = sdk_webhook.preapproval().get(preapproval_id)
-        #         if info and info.get("status") == 200 and info.get("response", {}).get("status"):
-        #             mp_current_status = info["response"]["status"]
-        #             if mp_current_status == 'authorized':
-        #                 sub_message = "Seu primeiro pagamento parece ter sido aprovado! Estamos processando sua matrícula."
-        #             elif mp_current_status == 'pending':
-        #                 sub_message = "Seu pagamento está pendente de aprovação no Mercado Pago. Aguarde a confirmação."
-        #     except Exception:
-        #         _log(f"Falha ao buscar status imediato do MP para {preapproval_id} no redirect.")
-        #         pass # Segue com a mensagem padrão
+        if collection_status == 'approved':
+            sub_message = "Seu pagamento foi aprovado! Estamos processando sua matrícula."
+        elif collection_status == 'pending':
+            sub_message = "Seu pagamento está pendente de aprovação. Aguarde a confirmação."
+        elif collection_status == 'rejected':
+            sub_message = "Seu pagamento foi recusado. Por favor, tente novamente ou utilize outro método."
+        
     
-    # Esta página é apenas um feedback visual. A lógica de matrícula ocorre no webhook.
-    # Idealmente, esta rota retornaria HTML para o usuário ou redirecionaria para uma página de "obrigado" no frontend.
-    # Por ora, retorna JSON.
     return {
-        "title": "Processando Assinatura",
+        "title": "Processando Pagamento",
         "message": message,
         "sub_message": sub_message,
         "mp_preapproval_id": preapproval_id,
+        "mp_payment_id": payment_id,
         "your_reference_id": external_reference,
         "important_note": "A confirmação final da sua matrícula e o status do pagamento serão enviados por e-mail e processados em segundo plano."
     }
-

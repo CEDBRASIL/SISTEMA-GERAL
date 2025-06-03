@@ -8,6 +8,8 @@ Inclui roteadores:
     • /api/auth           → autenticação (secure.py)
     • /api                → matrícula (matricular.py)
     • /api/webhook        → webhooks (webhook.py)
+    • /sandbox            → matrícula sandbox (sandbox_matricular.py)
+    • /cadastrar          → cadastro/matrícula OM e ChatPro (cadastrar.py)
 
 CORS aberto por padrão; ajuste a lista ORIGINS no .env se precisar restringir.
 """
@@ -53,13 +55,12 @@ app.add_middleware(
 # ──────────────────────────────────────────────────────────
 # Registrar roteadores
 # ──────────────────────────────────────────────────────────
-app.include_router(cursos.router,       prefix="/cursos",      tags=["Cursos"])
-app.include_router(secure.router,       tags=["Autenticação"])
-app.include_router(matricular.router,   prefix="/api",         tags=["Matrícula"])
-# CORREÇÃO: Adicionada uma vírgula entre o prefixo e as tags
-app.include_router(webhook.router,      prefix="/api",         tags=["Webhooks"])
-app.include_router(sandbox_matricular.router, prefix="/sandbox", tags=["sandbox"])
-app.include_router(cadastrar.router, prefix="/cadastrar", tags=["cadastrar"])
+app.include_router(cursos.router,          prefix="/cursos",      tags=["Cursos"])
+app.include_router(secure.router,          tags=["Autenticação"])
+app.include_router(matricular.router,      prefix="/api",        tags=["Matrícula"])
+app.include_router(webhook.router,         prefix="/api",        tags=["Webhooks"])
+app.include_router(sandbox_matricular.router, prefix="/sandbox", tags=["Sandbox"])
+app.include_router(cadastrar.router,       prefix="/cadastrar",  tags=["Cadastro OM"])
 
 
 # ──────────────────────────────────────────────────────────

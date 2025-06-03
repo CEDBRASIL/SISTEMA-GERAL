@@ -34,20 +34,16 @@ THANK_YOU_PAGE_URL = os.getenv("THANK_YOU_PAGE_URL_SANDBOX", os.getenv("THANK_YO
 # Chave da API Gemini (pode ser a mesma, com valor padrão)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "") 
 
-# Variáveis de Ambiente para ChatPro (REMOVIDAS DESTE ARQUIVO, AGORA NO CADASTRAR.PY)
-# CHATPRO_URL = os.getenv("CHATPRO_URL")
-# CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
-
 # URL do Webhook do Discord para logs de eventos (colocado diretamente no código conforme solicitado)
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1377838283975036928/IgVvwyrBBWflKyXbIU9dgH4PhLwozHzrf-nJpj3w7dsZC-Ds9qN8_Toym3Tnbj-3jdU4"
 
 # ──────────────────────────────────────────────────────────
 # Armazenamento Temporário de Matrículas Pendentes
+# ATENÇÃO: Em produção, isso deve ser um banco de dados persistente!
+# `webhook.py` e `pagamento-status` também precisarão acessar esses dados.
 # ──────────────────────────────────────────────────────────
 PENDING_ENROLLMENTS: Dict[str, Dict] = {}
-# CPF_PREFIXO e cpf_lock não são mais usados aqui para matrícula, mas mantidos se houver outra dependência
-CPF_PREFIXO = "20254158" # Prefixo de CPF para alunos de teste no sandbox
-cpf_lock = threading.Lock() # Lock para garantir geração de CPF sequencial segura
+
 
 # ──────────────────────────────────────────────────────────
 # Funções Auxiliares de Logging
@@ -71,15 +67,9 @@ else:
         _log(f"ERRO CRÍTICO SANDBOX ao inicializar SDK Mercado Pago: {e}. A integração com Mercado Pago (Sandbox) PODE NÃO FUNCIONAR.")
 
 # ──────────────────────────────────────────────────────────
-# Funções de Lógica de Negócio (matrícula, etc.) - REMOVIDAS OU SIMPLIFICADAS
-# As funções de OM agora residem principalmente em 'cadastrar.py'
+# Funções de Lógica de Negócio (REMOVIDAS OU SIMPLIFICADAS)
+# A lógica de matrícula OM foi movida para cadastrar.py
 # ──────────────────────────────────────────────────────────
-# As funções _obter_token_unidade, _total_alunos, _proximo_cpf, _matricular_om, _cadastrar_aluno, matricular_aluno_final
-# e _nome_para_ids foram removidas ou simplificadas deste arquivo, pois a lógica de matrícula OM
-# será tratada pelo novo endpoint de 'cadastrar'.
-# Apenas _nome_para_ids é mantida se for usada para a descrição do curso, mas não para matrícula OM.
-# Para manter este arquivo mínimo e focado apenas na criação da preferência MP e Discord log da INICIAÇÃO:
-# Removendo todas as funções relacionadas à matrícula OM.
 
 def _send_discord_message(message: str):
     """Envia uma mensagem para o webhook do Discord."""
@@ -141,6 +131,7 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
     pending_enrollment_id = str(uuid.uuid4()) # Usado como external_reference
     
     try:
+        # Armazena os dados do aluno para que o webhook possa recuperá-los
         PENDING_ENROLLMENTS[pending_enrollment_id] = {
             "nome": nome, "whatsapp": whatsapp, "email": email,
             "cursos_nomes": cursos_nomes, "status": "pending_single_payment_sandbox", # Novo status
@@ -197,11 +188,6 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
 
             _log(f"Preferência de Pagamento MP (SANDBOX) criada (ID: {mp_preference_id}). Redirect: {init_point}")
             PENDING_ENROLLMENTS[pending_enrollment_id]["mp_preference_id"] = mp_preference_id 
-            
-            # -------------------------------------------------------------
-            # Lógica de matrícula OM e ChatPro REMOVIDA daqui.
-            # Agora será acionada pelo novo endpoint /matricular em cadastrar.py
-            # -------------------------------------------------------------
             
             # -------------------------------------------------------------
             # AÇÃO: Enviar log para o Discord Bot (mantido aqui para log da INICIAÇÃO do pagamento)

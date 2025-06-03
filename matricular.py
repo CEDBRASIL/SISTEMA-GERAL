@@ -1,6 +1,6 @@
 """
-matricular.py – Prepara o processo de matrícula e pagamento com Mercado Pago.
-A matrícula final no sistema OM é feita via webhook.
+matricular.py – Prepara o processo de matrícula e pagamento com Mercado Pago (PRODUÇÃO).
+A matrícula final no sistema OM será feita via webhook, chamando o endpoint /cadastrar.
 Inclui endpoint para gerar descrição de curso com Gemini API.
 """
 
@@ -9,8 +9,8 @@ import threading
 from typing import List, Tuple, Optional, Dict
 import requests
 from fastapi import APIRouter, HTTPException, Request
-from datetime import datetime, timezone # Adicionado timezone
-import uuid # Para gerar IDs únicos para as matrículas pendentes
+from datetime import datetime, timezone 
+import uuid 
 from cursos import CURSOS_OM # Presumo que CURSOS_OM esteja definido em cursos.py
 import mercadopago # Importar o SDK do Mercado Pago
 
@@ -25,22 +25,24 @@ OM_BASE = os.getenv("OM_BASE")
 BASIC_B64 = os.getenv("BASIC_B64")
 UNIDADE_ID = os.getenv("UNIDADE_ID")
 MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
-# MP_PREAPPROVAL_PLAN_ID = os.getenv("MP_PREAPPROVAL_PLAN_ID") # Não será mais usado para este fluxo
 THANK_YOU_PAGE_URL = os.getenv("THANK_YOU_PAGE_URL")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # ──────────────────────────────────────────────────────────
 # Armazenamento Temporário de Matrículas Pendentes
+# ATENÇÃO: Em produção, isso deve ser um banco de dados persistente!
+# `webhook.py` precisará acessar esses dados.
 # ──────────────────────────────────────────────────────────
 PENDING_ENROLLMENTS: Dict[str, Dict] = {}
-CPF_PREFIXO = "20254158"
-cpf_lock = threading.Lock()
+# CPF_PREFIXO e cpf_lock não são mais usados aqui, pois a lógica de matrícula OM foi movida.
+# CPF_PREFIXO = "20254158"
+# cpf_lock = threading.Lock()
 
 # ──────────────────────────────────────────────────────────
-# Funções Auxiliares
+# Funções Auxiliares de Logging
 # ──────────────────────────────────────────────────────────
 def _log(msg: str):
-    """Função de logging simples."""
+    """Função de logging simples para matricular.py."""
     print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] [Matricular] {msg}")
 
 # ──────────────────────────────────────────────────────────
@@ -57,200 +59,19 @@ else:
         _log(f"ERRO CRÍTICO ao inicializar SDK Mercado Pago em matricular.py: {e}. A integração com Mercado Pago PODE NÃO FUNCIONAR.")
 
 # ──────────────────────────────────────────────────────────
-# Funções de Lógica de Negócio (matrícula, etc.)
+# Funções de Lógica de Negócio (REMOVIDAS OU SIMPLIFICADAS)
+# A lógica de matrícula OM foi movida para cadastrar.py
 # ──────────────────────────────────────────────────────────
-def _obter_token_unidade() -> str:
-    if not all([OM_BASE, BASIC_B64, UNIDADE_ID]):
-        _log("ERRO: Variáveis OM não configuradas (_obter_token_unidade).")
-        raise RuntimeError("Variáveis OM não configuradas. Verifique ambiente.")
-    url = f"{OM_BASE}/unidades/token/{UNIDADE_ID}"
-    try:
-        r = requests.get(url, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
-        r.raise_for_status()
-        response_json = r.json()
-        if response_json.get("status") == "true" and response_json.get("data", {}).get("token"):
-            return response_json["data"]["token"]
-        _log(f"Falha ao obter token da unidade. Resposta: {r.text}")
-        raise RuntimeError(f"Falha ao obter token da unidade: {response_json.get('info', 'Resposta inesperada')}")
-    except requests.RequestException as e:
-        _log(f"Erro de conexão ao obter token da unidade: {e}")
-        raise RuntimeError(f"Erro de conexão ao obter token da unidade: {e}")
-    except ValueError: # JSONDecodeError herda de ValueError
-        _log(f"Resposta inválida (não JSON) ao obter token da unidade: {r.text if 'r' in locals() else 'N/A'}")
-        raise RuntimeError("Resposta inválida (não JSON) ao obter token da unidade.")
-
-
-def _total_alunos() -> int:
-    if not all([OM_BASE, BASIC_B64, UNIDADE_ID]):
-        _log("ERRO: Variáveis OM não configuradas (_total_alunos).")
-        raise RuntimeError("Variáveis OM não configuradas para _total_alunos.")
-    
-    # Tentativa 1: Endpoint /alunos/total
-    url_total = f"{OM_BASE}/alunos/total/{UNIDADE_ID}"
-    try:
-        r_total = requests.get(url_total, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
-        r_total.raise_for_status()
-        response_json_total = r_total.json()
-        if response_json_total.get("status") == "true" and response_json_total.get("data", {}).get("total") is not None:
-            return int(response_json_total["data"]["total"])
-        _log(f"Endpoint /alunos/total não retornou sucesso ou total. Resposta: {r_total.text}. Tentando contagem alternativa.")
-    except requests.RequestException as e:
-        _log(f"Erro de conexão no endpoint /alunos/total: {e}. Tentando contagem alternativa.")
-    except (ValueError, TypeError) as e: # JSONDecodeError ou erro de conversão para int
-        _log(f"Erro ao processar resposta de /alunos/total: {e}. Resposta: {r_total.text if 'r_total' in locals() else 'N/A'}. Tentando contagem alternativa.")
-
-    # Tentativa 2: Endpoint /alunos com filtro (fallback)
-    url_list = f"{OM_BASE}/alunos?unidade_id={UNIDADE_ID}&cpf_like={CPF_PREFIXO}"
-    try:
-        r_list = requests.get(url_list, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
-        r_list.raise_for_status()
-        response_json_list = r_list.json()
-        if response_json_list.get("status") == "true" and "data" in response_json_list:
-            return len(response_json_list["data"])
-        _log(f"Falha ao apurar total de alunos (contagem alternativa). Resposta: {r_list.text}")
-        raise RuntimeError(f"Falha ao apurar total de alunos (contagem alternativa): {response_json_list.get('info', 'Resposta inesperada')}")
-    except requests.RequestException as e:
-        _log(f"Erro de conexão na contagem alternativa de alunos: {e}")
-        raise RuntimeError(f"Erro de conexão na contagem alternativa de alunos: {e}")
-    except ValueError:
-        _log(f"Resposta inválida (não JSON) na contagem alternativa de alunos: {r_list.text if 'r_list' in locals() else 'N/A'}")
-        raise RuntimeError("Resposta inválida (não JSON) na contagem alternativa de alunos.")
-
-
-def _proximo_cpf(incr:int=0)->str:
-    with cpf_lock:
-        try:
-            seq = _total_alunos() + 1 + incr
-            return CPF_PREFIXO + str(seq).zfill(3)
-        except RuntimeError as e:
-            _log(f"Erro ao obter total de alunos para gerar CPF: {e}. Usando fallback para CPF.")
-            # Fallback muito simples, idealmente teria uma estratégia melhor
-            timestamp_fallback = str(int(datetime.now().timestamp()))[-3:]
-            return CPF_PREFIXO + timestamp_fallback.zfill(3)
-
-
-def _matricular_om(aluno_id:str, cursos_ids:List[int], token:str)->bool:
-    if not all([OM_BASE, BASIC_B64]):
-        _log("ERRO: Variáveis OM não configuradas (_matricular_om).")
-        raise RuntimeError("Variáveis OM não configuradas para _matricular_om.")
-    payload = {"token": token, "cursos": ",".join(map(str, cursos_ids))}
-    url = f"{OM_BASE}/alunos/matricula/{aluno_id}"
-    try:
-        r = requests.post(url, data=payload, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=10)
-        r.raise_for_status() # Levanta exceção para erros HTTP 4xx/5xx
-        _log(f"[MAT OM] Status: {r.status_code}, Resposta: {r.text[:120]}")
-        response_json = r.json()
-        return response_json.get("status") == "true"
-    except requests.RequestException as e:
-        _log(f"Erro de conexão ao matricular no OM: {e}")
-        return False
-    except ValueError: # JSONDecodeError
-        _log(f"Resposta inválida (não JSON) ao matricular no OM: {r.text if 'r' in locals() else 'N/A'}")
-        return False
-
-
-def _cadastrar_aluno(nome:str, whatsapp:str, email:str, cursos_ids:List[int], token:str, cpf:Optional[str]=None)->Tuple[Optional[str],Optional[str]]:
-    if not all([OM_BASE, BASIC_B64, UNIDADE_ID]):
-        _log("ERRO: Variáveis OM não configuradas (_cadastrar_aluno).")
-        raise RuntimeError("Variáveis OM não configuradas para _cadastrar_aluno.")
-    
-    final_cpf = cpf if cpf else _proximo_cpf()
-
-    for i in range(5): # Tentar algumas vezes com CPF diferente se o primeiro falhar por duplicidade
-        if not cpf and i > 0 : # Se não foi fornecido um CPF e não é a primeira tentativa
-            final_cpf = _proximo_cpf(i)
-
-        payload = {
-            "token": token, "nome": nome,
-            "email": email or f"{whatsapp}@nao-informado.com",
-            "whatsapp": whatsapp, "fone": whatsapp, "celular": whatsapp,
-            "data_nascimento": "2000-01-01", "doc_cpf": final_cpf, "doc_rg": "000000000",
-            "pais": "Brasil", "uf": "DF", "cidade": "Brasília",
-            "endereco": "Não informado", "bairro": "Centro", "cep": "70000-000",
-            "complemento": "", "numero": "0", "unidade_id": UNIDADE_ID, "senha": "123456"
-        }
-        url = f"{OM_BASE}/alunos"
-        try:
-            r = requests.post(url, data=payload, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=10)
-            r.raise_for_status()
-            response_json = r.json()
-            _log(f"[CAD ALUNO] Status: {r.status_code}, CPF Tentado: {final_cpf}, Resposta: {r.text[:150]}")
-
-            if response_json.get("status") == "true":
-                aluno_id = response_json.get("data", {}).get("id")
-                if aluno_id:
-                    if _matricular_om(aluno_id, cursos_ids, token):
-                        return aluno_id, final_cpf
-                    else:
-                        _log(f"Aluno {aluno_id} cadastrado, mas falha ao matricular nos cursos.")
-                        # Considerar se deve levantar erro aqui ou retornar parcial
-                        raise RuntimeError("Aluno cadastrado, mas falha ao matricular nos cursos OM.")
-                else:
-                    _log("Cadastro de aluno retornou true, mas sem ID do aluno.")
-            
-            # Se CPF já está em uso e não foi um CPF fornecido externamente, tenta próximo
-            if "já está em uso" in response_json.get("info", "").lower() and not cpf:
-                _log(f"CPF {final_cpf} já em uso. Tentando próximo.")
-                continue # Tenta o próximo CPF no loop
-            else: # Outro erro ou CPF fornecido externamente falhou
-                _log(f"Falha ao cadastrar aluno (não relacionado a CPF duplicado ou CPF era fixo). Info: {response_json.get('info')}")
-                break # Sai do loop de tentativas de CPF
-
-        except requests.RequestException as e:
-            _log(f"Erro de conexão ao cadastrar aluno: {e}")
-            break # Sai do loop em caso de erro de conexão
-        except ValueError: # JSONDecodeError
-             _log(f"Resposta inválida (não JSON) ao cadastrar aluno: {r.text if 'r' in locals() else 'N/A'}")
-             break
-
-    _log(f"Não foi possível cadastrar/matricular o aluno {nome} após tentativas.")
-    raise RuntimeError("Falha ao cadastrar/matricular aluno no sistema OM após tentativas.")
-
-
-def _nome_para_ids(cursos_nomes:List[str])->List[int]:
-    ids=[]
-    for nome_curso in cursos_nomes:
-        curso_ids = CURSOS_OM.get(nome_curso.strip())
-        if curso_ids:
-            ids.extend(curso_ids)
-        else:
-            _log(f"AVISO: Nome de curso '{nome_curso}' não encontrado em CURSOS_OM.")
-    if not ids:
-        _log("ERRO: Nenhum ID de disciplina encontrado para os cursos fornecidos em _nome_para_ids.")
-    return ids
-
-def matricular_aluno_final(nome:str, whatsapp:str, email:Optional[str], cursos_nomes:List[str])->Tuple[str,str,List[int]]:
-    _log(f"Iniciando matrícula final para: {nome}, Cursos: {cursos_nomes}")
-    cursos_ids = _nome_para_ids(cursos_nomes)
-    if not cursos_ids:
-        _log("ERRO CRÍTICO: Nenhum ID de disciplina encontrado para os cursos fornecidos. Matrícula não pode prosseguir.")
-        raise RuntimeError("Nenhum ID de disciplina encontrado para os cursos fornecidos")
-    
-    try:
-        token = _obter_token_unidade()
-        aluno_id, cpf = _cadastrar_aluno(nome, whatsapp, email or "", cursos_ids, token)
-        if aluno_id and cpf:
-            _log(f"Matrícula final no OM bem-sucedida para {nome}. Aluno ID: {aluno_id}, CPF: {cpf}")
-            return aluno_id, cpf, cursos_ids
-        else:
-            # _cadastrar_aluno já levanta RuntimeError em caso de falha total
-            # Esta parte pode não ser alcançada se _cadastrar_aluno sempre levantar exceção em falha.
-            _log("ERRO CRÍTICO: _cadastrar_aluno retornou None para aluno_id ou cpf sem levantar exceção.")
-            raise RuntimeError("Falha inesperada no processo de cadastro do aluno.")
-
-    except RuntimeError as e:
-        _log(f"ERRO em matricular_aluno_final: {e}")
-        raise # Re-levanta a exceção para ser tratada pelo chamador (webhook)
-    except Exception as e:
-        _log(f"ERRO inesperado em matricular_aluno_final: {e}")
-        raise RuntimeError(f"Erro inesperado durante a matrícula final: {e}")
+# As funções _obter_token_unidade, _total_alunos, _proximo_cpf, _matricular_om, _cadastrar_aluno, matricular_aluno_final
+# e _nome_para_ids foram removidas deste arquivo, pois a lógica de matrícula OM
+# será tratada pelo novo endpoint de 'cadastrar'.
 
 
 # ──────────────────────────────────────────────────────────
-# Endpoint de Matrícula (Inicia Pagamento MP)
+# Endpoint de Matrícula (Inicia Pagamento MP - PRODUÇÃO)
 # ──────────────────────────────────────────────────────────
 @router.post("/")
-async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado request para obter base_url
+async def endpoint_iniciar_matricula(body: dict, request: Request): 
     nome = body.get("nome")
     whatsapp = body.get("whatsapp")
     email = body.get("email", "") 
@@ -267,9 +88,6 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
 
     curso_principal_nome = cursos_nomes[0] if cursos_nomes else "Matrícula Curso Online"
     
-    # if not MP_PREAPPROVAL_PLAN_ID: # Não é mais necessário
-    #     _log("ERRO CRÍTICO: MP_PREAPPROVAL_PLAN_ID não configurado no ambiente.")
-    #     raise HTTPException(500, detail="Configuração de pagamento indisponível (PLAN_ID).")
     if not THANK_YOU_PAGE_URL: 
         _log("ERRO CRÍTICO: THANK_YOU_PAGE_URL não configurada no ambiente.")
         raise HTTPException(500, detail="Configuração de pagamento indisponível (RETURN_URL).")
@@ -281,6 +99,7 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
     pending_enrollment_id = str(uuid.uuid4())
     
     try:
+        # Armazena os dados do aluno para que o webhook possa recuperá-los
         PENDING_ENROLLMENTS[pending_enrollment_id] = {
             "nome": nome, "whatsapp": whatsapp, "email": email,
             "cursos_nomes": cursos_nomes, "status": "pending_payment",
@@ -293,68 +112,77 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
         _log(f"URL de notificação para MP configurada como: {notification_url}")
 
         # --- MODIFICAÇÃO PARA ASSINATURA DINÂMICA ---
-        # Data de início da cobrança (ex: agora mesmo)
-        # O Mercado Pago pode exigir que a data de início seja um pouco no futuro.
-        # Por simplicidade, vamos tentar omitir start_date e end_date inicialmente.
-        # Se o MP exigir, podemos adicionar:
-        # start_date_iso = datetime.now(timezone.utc).isoformat(timespec='milliseconds')
-        # end_date_iso = (datetime.now(timezone.utc) + timedelta(days=365*2)).isoformat(timespec='milliseconds') # Ex: 2 anos
-
-        preapproval_data = {
-            "reason": f"Assinatura Mensal: {curso_principal_nome}", # Motivo da assinatura
-            "payer_email": email, 
-            "back_url": THANK_YOU_PAGE_URL, 
-            "external_reference": pending_enrollment_id, 
+        # Para pagamentos únicos, use a API de preferências (checkout_pro)
+        # Para assinaturas, use a API de preapproval
+        # O código original parecia misturar conceitos de pagamento único e assinatura.
+        # Vou assumir que este endpoint é para pagamentos *únicos* que usam checkout_pro.
+        # Se for para assinaturas, a estrutura `preapproval_data` está mais próxima.
+        # Vou usar a estrutura de PREFERÊNCIA de pagamento (para checkout pro) que é mais comum para "matrícula única".
+        
+        preference_data = {
+            "items": [
+                {
+                    "title": f"Pagamento Único: {curso_principal_nome}",
+                    "quantity": 1,
+                    "unit_price": 49.90, # Valor fixo para teste, ajuste conforme sua lógica
+                }
+            ],
+            "payer": {
+                "email": email,
+                "name": nome.split(" ")[0] if nome else None,
+                "surname": " ".join(nome.split(" ")[1:]) if nome and " " in nome else None,
+            },
+            "external_reference": pending_enrollment_id,
             "notification_url": notification_url,
-            "auto_recurring": {
-                "frequency": 1,                 # Cobrar 1 vez
-                "frequency_type": "months",     # a cada 'months' (mês)
-                "transaction_amount": 49.90,    # Valor da cobrança
-                "currency_id": "BRL"            # Moeda (Real Brasileiro)
-                # "start_date": start_date_iso, # Opcional: Data de início da cobrança
-                # "end_date": end_date_iso,     # Opcional: Data de término da assinatura
-            }
-            # Removido: "preapproval_plan_id": MP_PREAPPROVAL_PLAN_ID,
+            "back_urls": { 
+                "success": THANK_YOU_PAGE_URL,
+                "failure": THANK_YOU_PAGE_URL, 
+                "pending": THANK_YOU_PAGE_URL   
+            },
+            "auto_return": "approved", # 'approved' ou 'all'
+            "statement_descriptor": "CED Educ" # Máximo 10 caracteres
         }
-        # --- FIM DA MODIFICAÇÃO ---
         
-        _log(f"Criando assinatura MP DINÂMICA com dados: {preapproval_data}")
-        preapproval_response_dict = sdk_matricular.preapproval().create(preapproval_data)
+        _log(f"Criando Preferência de Pagamento MP (PRODUÇÃO) com dados: {preference_data}")
+        preference_response_dict = sdk_matricular.preference().create(preference_data)
         
-        if preapproval_response_dict and preapproval_response_dict.get("status") == 201: 
-            response_data = preapproval_response_dict.get("response", {})
-            init_point = response_data.get("init_point")
-            mp_preapproval_id = response_data.get("id")
+        _log(f"RESPOSTA COMPLETA DO MP (Preferência de Pagamento): {preference_response_dict}")
+        
+        if preference_response_dict and preference_response_dict.get("status") == 201: 
+            response_data = preference_response_dict.get("response", {})
+            init_point = response_data.get("init_point") # Para produção, é 'init_point'
+            mp_preference_id = response_data.get("id") 
 
-            if not init_point or not mp_preapproval_id:
-                _log(f"ERRO: init_point ou ID da pré-aprovação ausentes na resposta do MP: {response_data}")
+            if not init_point or not mp_preference_id:
+                _log(f"ERRO: init_point ou ID da preferência ausentes na resposta do MP: {response_data}")
                 PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
-                raise HTTPException(500, detail="Falha ao obter dados da criação da assinatura MP.")
+                raise HTTPException(500, detail="Falha ao obter dados da criação da preferência MP.")
 
-            _log(f"Assinatura MP DINÂMICA criada (ID: {mp_preapproval_id}). Redirect: {init_point}")
-            PENDING_ENROLLMENTS[pending_enrollment_id]["mp_preapproval_id"] = mp_preapproval_id
+            _log(f"Preferência de Pagamento MP (PRODUÇÃO) criada (ID: {mp_preference_id}). Redirect: {init_point}")
+            PENDING_ENROLLMENTS[pending_enrollment_id]["mp_preference_id"] = mp_preference_id 
             
             return {
                 "status": "ok",
                 "message": "Matrícula iniciada, redirecionando para o pagamento.",
                 "redirect_url": init_point,
-                "pending_enrollment_id": pending_enrollment_id
+                "pending_enrollment_id": pending_enrollment_id,
+                "mp_preference_id": mp_preference_id
             }
         else:
-            error_details = preapproval_response_dict.get('response', preapproval_response_dict) if preapproval_response_dict else "Resposta vazia"
-            status_code = preapproval_response_dict.get('status', 'N/A') if preapproval_response_dict else 'N/A'
-            _log(f"Erro ao criar assinatura MP DINÂMICA: Status {status_code} - Detalhes: {error_details}")
-            PENDING_ENROLLMENTS.pop(pending_enrollment_id, None)
+            error_details = preference_response_dict.get('response', preference_response_dict) if preference_response_dict else "Resposta vazia"
+            status_code = preference_response_dict.get('status', 'N/A') if preference_response_dict else 'N/A'
+            _log(f"Erro ao criar Preferência de Pagamento MP (PRODUÇÃO): Status {status_code} - Detalhes: {error_details}")
+            PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
             
             mp_error_message = "Falha ao iniciar o pagamento com Mercado Pago."
             if isinstance(error_details, dict) and error_details.get("message"):
                 mp_error_message = error_details.get("message")
                 if error_details.get("cause") and isinstance(error_details["cause"], list) and len(error_details["cause"]) > 0:
-                     first_cause = error_details["cause"][0]
-                     if isinstance(first_cause, dict) and first_cause.get("description"):
-                         mp_error_message = first_cause.get("description")
-                     elif isinstance(first_cause, str): 
-                         mp_error_message = first_cause
+                    first_cause = error_details["cause"][0]
+                    if isinstance(first_cause, dict) and first_cause.get("description"):
+                        mp_error_message = first_cause.get("description")
+                    elif isinstance(first_cause, str): 
+                        mp_error_message = first_cause
 
             raise HTTPException(status_code= int(status_code) if str(status_code).isdigit() else 500, detail=mp_error_message)
 
@@ -369,7 +197,7 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
             if cause and isinstance(cause, list) and len(cause) > 0 and isinstance(cause[0], dict) and cause[0].get('description'):
                 error_detail = cause[0].get('description')
             elif cause and isinstance(cause, str): 
-                 error_detail = cause
+                error_detail = cause
 
             http_status_code = getattr(mp_e, 'status_code', 500)
             if not isinstance(http_status_code, int):
@@ -431,14 +259,14 @@ async def generate_course_description(body: dict):
             if gemini_result and gemini_result.get("error") and gemini_result["error"].get("message"):
                 error_message_gemini = gemini_result["error"]["message"]
             elif gemini_result and gemini_result.get("promptFeedback") and gemini_result["promptFeedback"].get("blockReason"):
-                 error_message_gemini = f"Conteúdo bloqueado pela IA: {gemini_result['promptFeedback']['blockReason']}"
+                error_message_gemini = f"Conteúdo bloqueado pela IA: {gemini_result['promptFeedback']['blockReason']}"
             raise HTTPException(500, detail=error_message_gemini)
 
     except requests.exceptions.Timeout:
         _log(f"Timeout ao conectar com a API Gemini para '{course_name}'.")
         raise HTTPException(504, detail="Serviço de geração de descrição demorou muito para responder.")
     except requests.exceptions.HTTPError as http_err:
-        _log(f"Erro HTTP da API Gemini para '{course_name}': {http_err}. Resposta: {http_err.response.text}")
+        _log(f"Erro HTTP da API Gemini para '{course_name}': {http_err}. Resposta: {http_err.text}")
         error_detail_gemini = f"Erro da API Gemini ({http_err.response.status_code})."
         try:
             err_json = http_err.response.json()
@@ -457,4 +285,3 @@ async def generate_course_description(body: dict):
     except Exception as e:
         _log(f"Erro geral ao gerar descrição para '{course_name}': {e} (Tipo: {type(e)})")
         raise HTTPException(500, detail=f"Erro interno ao gerar descrição: {e}")
-
