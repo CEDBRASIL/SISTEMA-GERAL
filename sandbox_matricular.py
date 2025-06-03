@@ -20,25 +20,35 @@ router = APIRouter()
 # ──────────────────────────────────────────────────────────
 # Variáveis de Ambiente (Puxadas via os.getenv)
 # ──────────────────────────────────────────────────────────
-OM_BASE = os.getenv("OM_BASE") # Mantenha ou use um OM_BASE de teste se tiver
-BASIC_B64 = os.getenv("BASIC_B64") # Mantenha ou use um BASIC_B64 de teste se tiver
-UNIDADE_ID = os.getenv("UNIDADE_ID") # Mantenha ou use um UNIDADE_ID de teste se tiver
+OM_BASE = os.getenv("OM_BASE") # Base URL do sistema OM
+BASIC_B64 = os.getenv("BASIC_B64") # Credenciais Basic Auth para OM
+UNIDADE_ID = os.getenv("UNIDADE_ID") # ID da unidade no sistema OM
 
 # TOKEN DE TESTE DO MERCADO PAGO
 MP_TEST_ACCESS_TOKEN = os.getenv("MP_TEST_ACCESS_TOKEN") 
 
-THANK_YOU_PAGE_URL = os.getenv("THANK_YOU_PAGE_URL_SANDBOX", os.getenv("THANK_YOU_PAGE_URL")) # Permite URL de obrigado específica para sandbox
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "") # Chave da API Gemini (pode ser a mesma, com valor padrão)
+# URLs de retorno após o pagamento (para sandbox)
+THANK_YOU_PAGE_URL = os.getenv("THANK_YOU_PAGE_URL_SANDBOX", os.getenv("THANK_YOU_PAGE_URL")) 
+
+# Chave da API Gemini (pode ser a mesma, com valor padrão)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "") 
+
+# Variáveis de Ambiente para ChatPro
+CHATPRO_URL = os.getenv("CHATPRO_URL")
+CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
+
+# URL do Webhook do Discord para logs de eventos (colocado diretamente no código conforme solicitado)
+DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1377838283975036928/IgVvwyrBBWflKyXbIU9dgH4PhLwozHzrf-nJpj3w7dsZC-Ds9qN8_Toym3Tnbj-3jdU4"
 
 # ──────────────────────────────────────────────────────────
 # Armazenamento Temporário de Matrículas Pendentes
 # ──────────────────────────────────────────────────────────
 PENDING_ENROLLMENTS: Dict[str, Dict] = {}
-CPF_PREFIXO = "20254158" # Pode querer um prefixo de CPF de teste
-cpf_lock = threading.Lock()
+CPF_PREFIXO = "20254158" # Prefixo de CPF para alunos de teste no sandbox
+cpf_lock = threading.Lock() # Lock para garantir geração de CPF sequencial segura
 
 # ──────────────────────────────────────────────────────────
-# Funções Auxiliares
+# Funções Auxiliares de Logging
 # ──────────────────────────────────────────────────────────
 def _log(msg: str):
     """Função de logging simples para SANDBOX."""
@@ -62,6 +72,7 @@ else:
 # Funções de Lógica de Negócio (matrícula, etc.) - Idênticas às de produção, mas usando sdk_matricular_sandbox
 # ──────────────────────────────────────────────────────────
 def _obter_token_unidade() -> str:
+    """Obtém o token da unidade no sistema OM."""
     if not all([OM_BASE, BASIC_B64, UNIDADE_ID]):
         _log("ERRO SANDBOX: Variáveis OM não configuradas (_obter_token_unidade).")
         raise RuntimeError("Variáveis OM não configuradas. Verifique ambiente.")
@@ -83,6 +94,7 @@ def _obter_token_unidade() -> str:
 
 
 def _total_alunos() -> int:
+    """Apurar o total de alunos cadastrados no sistema OM para a unidade."""
     if not all([OM_BASE, BASIC_B64, UNIDADE_ID]):
         _log("ERRO SANDBOX: Variáveis OM não configuradas (_total_alunos).")
         raise RuntimeError("Variáveis OM não configuradas para _total_alunos.")
@@ -118,6 +130,7 @@ def _total_alunos() -> int:
 
 
 def _proximo_cpf(incr:int=0)->str:
+    """Gera um próximo CPF de teste único para o sandbox."""
     with cpf_lock:
         try:
             seq = _total_alunos() + 1 + incr
@@ -129,6 +142,7 @@ def _proximo_cpf(incr:int=0)->str:
 
 
 def _matricular_om(aluno_id:str, cursos_ids:List[int], token:str)->bool:
+    """Matricula um aluno em cursos específicos no sistema OM."""
     if not all([OM_BASE, BASIC_B64]):
         _log("ERRO SANDBOX: Variáveis OM não configuradas (_matricular_om).")
         raise RuntimeError("Variáveis OM não configuradas para _matricular_om.")
@@ -149,14 +163,15 @@ def _matricular_om(aluno_id:str, cursos_ids:List[int], token:str)->bool:
 
 
 def _cadastrar_aluno(nome:str, whatsapp:str, email:str, cursos_ids:List[int], token:str, cpf:Optional[str]=None)->Tuple[Optional[str],Optional[str]]:
+    """Cadastra um novo aluno no sistema OM e tenta matriculá-lo nos cursos."""
     if not all([OM_BASE, BASIC_B64, UNIDADE_ID]):
         _log("ERRO SANDBOX: Variáveis OM não configuradas (_cadastrar_aluno).")
         raise RuntimeError("Variáveis OM não configuradas para _cadastrar_aluno.")
     
     final_cpf = cpf if cpf else _proximo_cpf()
 
-    for i in range(5): 
-        if not cpf and i > 0 : 
+    for i in range(5): # Tenta gerar CPF único até 5 vezes
+        if not cpf and i > 0 : # Se não foi fornecido um CPF, tenta o próximo
             final_cpf = _proximo_cpf(i)
 
         payload = {
@@ -188,23 +203,24 @@ def _cadastrar_aluno(nome:str, whatsapp:str, email:str, cursos_ids:List[int], to
             
             if "já está em uso" in response_json.get("info", "").lower() and not cpf:
                 _log(f"CPF {final_cpf} (Sandbox) já em uso. Tentando próximo.")
-                continue 
+                continue # Tenta novamente com um novo CPF
             else: 
                 _log(f"Falha SANDBOX ao cadastrar aluno (não relacionado a CPF duplicado ou CPF era fixo). Info: {response_json.get('info')}")
-                break 
+                break # Sai do loop se o erro não for CPF duplicado ou se o CPF era fixo
 
         except requests.RequestException as e:
             _log(f"Erro de conexão SANDBOX ao cadastrar aluno: {e}")
-            break 
+            break # Sai do loop em caso de erro de conexão
         except ValueError: 
             _log(f"Resposta inválida (não JSON) SANDBOX ao cadastrar aluno: {r.text if 'r' in locals() else 'N/A'}")
-            break
+            break # Sai do loop em caso de resposta não JSON
 
     _log(f"Não foi possível cadastrar/matricular o aluno {nome} (Sandbox) após tentativas.")
     raise RuntimeError("Falha ao cadastrar/matricular aluno no sistema OM (Sandbox) após tentativas.")
 
 
 def _nome_para_ids(cursos_nomes:List[str])->List[int]:
+    """Converte nomes de cursos em IDs de disciplina do sistema OM."""
     ids=[]
     for nome_curso in cursos_nomes:
         curso_ids = CURSOS_OM.get(nome_curso.strip())
@@ -217,6 +233,7 @@ def _nome_para_ids(cursos_nomes:List[str])->List[int]:
     return ids
 
 def matricular_aluno_final(nome:str, whatsapp:str, email:Optional[str], cursos_nomes:List[str])->Tuple[str,str,List[int]]:
+    """Função principal para matricular o aluno no sistema OM."""
     _log(f"Iniciando matrícula final SANDBOX para: {nome}, Cursos: {cursos_nomes}")
     cursos_ids = _nome_para_ids(cursos_nomes)
     if not cursos_ids:
@@ -240,6 +257,68 @@ def matricular_aluno_final(nome:str, whatsapp:str, email:Optional[str], cursos_n
         _log(f"ERRO inesperado SANDBOX em matricular_aluno_final: {e}")
         raise RuntimeError(f"Erro inesperado SANDBOX durante a matrícula final: {e}")
 
+def _send_chatpro_message(whatsapp: str, message: str):
+    """Envia uma mensagem via API ChatPro."""
+    if not CHATPRO_URL or not CHATPRO_TOKEN:
+        _log("AVISO SANDBOX: CHATPRO_URL ou CHATPRO_TOKEN não configurados. Mensagem ChatPro NÃO será enviada.")
+        return
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {CHATPRO_TOKEN}"
+    }
+    # Formata o número de WhatsApp para o padrão esperado pelo ChatPro (apenas dígitos, incluindo código do país)
+    # Assumindo que o whatsapp vem no formato "(XX) XXXXX-XXXX" ou "(XX) XXXX-XXXX"
+    # E que o código do país é 55 (Brasil). Ajuste se necessário.
+    whatsapp_clean = whatsapp.replace("(", "").replace(")", "").replace(" ", "").replace("-", "")
+    if not whatsapp_clean.startswith("55"): # Adiciona código do país se não presente
+        whatsapp_clean = "55" + whatsapp_clean
+
+    payload = {
+        "number": whatsapp_clean,
+        "message": message
+    }
+
+    try:
+        _log(f"Enviando mensagem ChatPro SANDBOX para {whatsapp_clean}...")
+        response = requests.post(CHATPRO_URL, headers=headers, data=json.dumps(payload), timeout=10)
+        response.raise_for_status() # Levanta um erro para status HTTP 4xx/5xx
+        _log(f"Mensagem ChatPro SANDBOX enviada com sucesso para {whatsapp_clean}. Resposta: {response.text}")
+    except requests.exceptions.Timeout:
+        _log(f"Timeout SANDBOX ao enviar mensagem ChatPro para {whatsapp_clean}.")
+    except requests.exceptions.HTTPError as http_err:
+        _log(f"Erro HTTP SANDBOX ao enviar mensagem ChatPro para {whatsapp_clean}: {http_err}. Resposta: {http_err.text}")
+    except requests.exceptions.RequestException as e:
+        _log(f"Erro de conexão SANDBOX ao enviar mensagem ChatPro para {whatsapp_clean}: {e}")
+    except Exception as e:
+        _log(f"Erro inesperado SANDBOX ao enviar mensagem ChatPro para {whatsapp_clean}: {e}")
+
+def _send_discord_message(message: str):
+    """Envia uma mensagem para o webhook do Discord."""
+    if not DISCORD_WEBHOOK_URL:
+        _log("AVISO SANDBOX: DISCORD_WEBHOOK_URL não configurada. Mensagem Discord NÃO será enviada.")
+        return
+
+    payload = {
+        "content": message
+    }
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    try:
+        _log(f"Enviando mensagem Discord SANDBOX...")
+        response = requests.post(DISCORD_WEBHOOK_URL, headers=headers, data=json.dumps(payload), timeout=10)
+        response.raise_for_status() # Levanta um erro para status HTTP 4xx/5xx
+        _log(f"Mensagem Discord SANDBOX enviada com sucesso. Status: {response.status_code}")
+    except requests.exceptions.Timeout:
+        _log(f"Timeout SANDBOX ao enviar mensagem Discord.")
+    except requests.exceptions.HTTPError as http_err:
+        _log(f"Erro HTTP SANDBOX ao enviar mensagem Discord: {http_err}. Resposta: {http_err.text}")
+    except requests.exceptions.RequestException as e:
+        _log(f"Erro de conexão SANDBOX ao enviar mensagem Discord: {e}")
+    except Exception as e:
+        _log(f"Erro inesperado SANDBOX ao enviar mensagem Discord: {e}")
 
 # ──────────────────────────────────────────────────────────
 # Endpoint de Matrícula (Inicia Pagamento ÚNICO MP - SANDBOX)
@@ -288,7 +367,6 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
         _log(f"URL de notificação SANDBOX para MP (Pagamento Único) configurada como: {notification_url}")
 
         # --- DADOS PARA PREFERÊNCIA DE CHECKOUT ---
-        # Alterado de "payment_data" para "preference_data" e ajustado para a API de Preferências
         preference_data = {
             "items": [
                 {
@@ -309,22 +387,20 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
                 "failure": thank_you_url_final, 
                 "pending": thank_you_url_final   
             },
-            "auto_return": "approved", # Corrigido de "approved_only" para "approved"
-            "statement_descriptor": "CED Educ" # Ajustado para o limite de caracteres comum em preferências (geralmente 10)
+            "auto_return": "approved", # Corrigido para "approved"
+            "statement_descriptor": "CED Educ" 
         }
         # --- FIM DOS DADOS PARA PREFERÊNCIA DE CHECKOUT ---
         
         _log(f"Criando Preferência de Pagamento MP (SANDBOX) com dados: {preference_data}")
-        # Alterado de .payment().create() para .preference().create()
         preference_response_dict = sdk_matricular_sandbox.preference().create(preference_data)
         
         _log(f"RESPOSTA COMPLETA DO MP SANDBOX (Preferência de Pagamento): {preference_response_dict}")
         
-        # O status para criação de preferência é 201 Created
         if preference_response_dict and preference_response_dict.get("status") == 201: 
             response_data = preference_response_dict.get("response", {})
             init_point = response_data.get("sandbox_init_point", response_data.get("init_point"))
-            mp_preference_id = response_data.get("id") # ID da preferência
+            mp_preference_id = response_data.get("id") 
             
             if not init_point or not mp_preference_id:
                 _log(f"ERRO SANDBOX: init_point/sandbox_init_point ou ID da preferência ausentes na resposta do MP: {response_data}")
@@ -332,14 +408,61 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
                 raise HTTPException(500, detail="Falha SANDBOX ao obter dados da criação da preferência MP.")
 
             _log(f"Preferência de Pagamento MP (SANDBOX) criada (ID: {mp_preference_id}). Redirect: {init_point}")
-            PENDING_ENROLLMENTS[pending_enrollment_id]["mp_preference_id"] = mp_preference_id # Armazene o ID da preferência
+            PENDING_ENROLLMENTS[pending_enrollment_id]["mp_preference_id"] = mp_preference_id 
             
+            # -------------------------------------------------------------
+            # AÇÃO ADICIONADA: Matricular o aluno e enviar mensagem ChatPro
+            # ATENÇÃO: Em produção, isso deve ser feito via webhook do MP
+            # -------------------------------------------------------------
+            aluno_id = None
+            cpf_aluno = None
+            cursos_ids = []
+            try:
+                aluno_id, cpf_aluno, cursos_ids = matricular_aluno_final(nome, whatsapp, email, cursos_nomes)
+                _log(f"Aluno {nome} (ID: {aluno_id}, CPF: {cpf_aluno}) matriculado no OM (Sandbox) após criação da preferência MP.")
+                
+                # Mensagem de confirmação para o aluno via ChatPro
+                chatpro_message = (
+                    f"Olá {nome}! 🎉\n\n"
+                    "Seu pagamento foi efetuado com sucesso no ambiente de TESTE do CED! "
+                    "Sua matrícula para o(s) curso(s) de "
+                    f"{', '.join(cursos_nomes)} está sendo processada. "
+                    "Em breve, você receberá um e-mail com os detalhes de acesso."
+                    "\n\nObrigado por escolher o CED!"
+                )
+                _send_chatpro_message(whatsapp, chatpro_message)
+
+            except Exception as e:
+                _log(f"ERRO SANDBOX: Falha ao matricular aluno ou enviar mensagem ChatPro APÓS criação da preferência MP: {e}")
+                # Não levantamos HTTPException aqui para não impedir o redirecionamento
+                # Mas é crucial logar e monitorar esses erros em produção.
+            
+            # -------------------------------------------------------------
+            # AÇÃO ADICIONADA: Enviar log para o Discord Bot
+            # -------------------------------------------------------------
+            _log("Preparando para enviar log de evento para o Discord.") # NOVO LOG DE DEPURACAO
+            discord_log_message = (
+                f"🎉 **Nova Matrícula SANDBOX Iniciada!** 🎉\n"
+                f"**Aluno:** {nome}\n"
+                f"**WhatsApp:** {whatsapp}\n"
+                f"**E-mail:** {email}\n"
+                f"**Curso(s):** {', '.join(cursos_nomes)}\n"
+                f"**Ref. Interna (Pending ID):** `{pending_enrollment_id}`\n"
+                f"**ID Preferência MP:** `{mp_preference_id}`\n"
+                f"**Status MP:** `Preferência Criada (201)`\n"
+                f"**Aluno OM ID:** `{aluno_id if aluno_id else 'N/A (Erro)'}`\n"
+                f"**CPF Gerado:** `{cpf_aluno if cpf_aluno else 'N/A (Erro)'}`\n"
+                f"**Link Checkout Sandbox:** {init_point}"
+            )
+            _send_discord_message(discord_log_message)
+            # -------------------------------------------------------------
+
             return {
                 "status": "ok_sandbox_payment",
                 "message": "Pagamento Único SANDBOX iniciado, redirecionando para o checkout de teste.",
                 "redirect_url": init_point,
                 "pending_enrollment_id": pending_enrollment_id,
-                "mp_preference_id": mp_preference_id # Retorne o ID da preferência
+                "mp_preference_id": mp_preference_id
             }
         else:
             error_details = preference_response_dict.get('response', preference_response_dict) if preference_response_dict else "Resposta vazia"
@@ -376,7 +499,7 @@ async def endpoint_iniciar_matricula_sandbox(body: dict, request: Request):
             if not isinstance(http_status_code, int):
                 http_status_code = 500
             
-            if pending_enrollment_id in PENDING_ENROLLMENTS: 
+            if pending_enrollment_id in PENDENCIES: 
                 PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
             raise HTTPException(status_code=http_status_code, detail=error_detail)
         else:
@@ -439,7 +562,7 @@ async def generate_course_description_sandbox(body: dict):
         _log(f"Timeout SANDBOX ao conectar com a API Gemini para '{course_name}'.")
         raise HTTPException(504, detail="Serviço SANDBOX de geração de descrição demorou muito para responder.")
     except requests.exceptions.HTTPError as http_err:
-        _log(f"Erro HTTP SANDBOX da API Gemini para '{course_name}': {http_err}. Resposta: {http_err.response.text}")
+        _log(f"Erro HTTP SANDBOX da API Gemini para '{course_name}': {http_err}. Resposta: {http_err.text}")
         error_detail_gemini = f"Erro SANDBOX da API Gemini ({http_err.response.status_code})."
         try:
             err_json = http_err.response.json()
