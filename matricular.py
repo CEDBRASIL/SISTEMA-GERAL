@@ -13,9 +13,7 @@ from datetime import datetime
 import uuid # Para gerar IDs únicos para as matrículas pendentes
 from cursos import CURSOS_OM # Presumo que CURSOS_OM esteja definido em cursos.py
 import mercadopago # Importar o SDK do Mercado Pago
-from mercadopago.exceptions import MPException # Tentar importar MPException diretamente de exceptions
-# Se o acima falhar, pode ser necessário importar de forma mais específica para a v2.3.0,
-# como por exemplo, de mercadopago.rest_client caso MPRESTException seja usada.
+# A importação 'from mercadopago.exceptions import MPException' foi removida pois causa ModuleNotFoundError com mercadopago-2.3.0
 
 import json # Para lidar com JSON da resposta da API Gemini
 
@@ -349,30 +347,34 @@ async def endpoint_iniciar_matricula(body: dict, request: Request): # Adicionado
             raise HTTPException(status_code= int(status_code) if str(status_code).isdigit() else 500, detail=mp_error_message)
 
     # CORREÇÃO APLICADA AQUI:
-    # Tentar importar a exceção específica se disponível na versão, senão usar a genérica.
-    except MPException as mp_e: 
-        _log(f"Erro no SDK do Mercado Pago (MPException): Status {getattr(mp_e, 'status_code', 'N/A')} - Mensagem: {getattr(mp_e, 'message', str(mp_e))} - Causa: {getattr(mp_e, 'cause', 'N/A')}")
-        if pending_enrollment_id in PENDING_ENROLLMENTS: 
-            PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
+    # Capturar exceção de forma mais genérica e tentar extrair informações.
+    except Exception as mp_e: 
+        # Verificar se é uma exceção do Mercado Pago pela presença de atributos comuns
+        is_mp_exception = hasattr(mp_e, 'status_code') and hasattr(mp_e, 'message')
         
-        error_detail = f"Erro no pagamento ({getattr(mp_e, 'status_code', 'N/A')}): {getattr(mp_e, 'message', str(mp_e))}"
-        cause = getattr(mp_e, 'cause', None)
-        if cause and isinstance(cause, list) and len(cause) > 0 and isinstance(cause[0], dict) and cause[0].get('description'):
-            error_detail = cause[0].get('description')
-        elif cause and isinstance(cause, str): 
-             error_detail = cause
+        if is_mp_exception:
+            _log(f"Erro no SDK do Mercado Pago: Status {getattr(mp_e, 'status_code', 'N/A')} - Mensagem: {getattr(mp_e, 'message', str(mp_e))} - Causa: {getattr(mp_e, 'cause', 'N/A')}")
+            
+            error_detail = f"Erro no pagamento ({getattr(mp_e, 'status_code', 'N/A')}): {getattr(mp_e, 'message', str(mp_e))}"
+            cause = getattr(mp_e, 'cause', None)
+            if cause and isinstance(cause, list) and len(cause) > 0 and isinstance(cause[0], dict) and cause[0].get('description'):
+                error_detail = cause[0].get('description')
+            elif cause and isinstance(cause, str): 
+                 error_detail = cause
 
-        # Garantir que status_code seja um int para HTTPException
-        http_status_code = getattr(mp_e, 'status_code', 500)
-        if not isinstance(http_status_code, int):
-            http_status_code = 500
-
-        raise HTTPException(status_code=http_status_code, detail=error_detail)
-    except Exception as e:
-        _log(f"Erro GERAL em endpoint_iniciar_matricula: {str(e)} (Tipo: {type(e)})")
-        if pending_enrollment_id in PENDING_ENROLLMENTS: 
-            PENDING_ENROLLMENTS.pop(pending_enrollment_id, None)
-        raise HTTPException(500, detail=f"Erro interno no servidor ao processar matrícula: {str(e)}")
+            http_status_code = getattr(mp_e, 'status_code', 500)
+            if not isinstance(http_status_code, int):
+                http_status_code = 500
+            
+            if pending_enrollment_id in PENDING_ENROLLMENTS: 
+                PENDING_ENROLLMENTS.pop(pending_enrollment_id, None) 
+            raise HTTPException(status_code=http_status_code, detail=error_detail)
+        else:
+            # Se não for uma exceção do MP reconhecida, trata como erro geral.
+            _log(f"Erro GERAL em endpoint_iniciar_matricula: {str(mp_e)} (Tipo: {type(mp_e)})")
+            if pending_enrollment_id in PENDING_ENROLLMENTS: 
+                PENDING_ENROLLMENTS.pop(pending_enrollment_id, None)
+            raise HTTPException(500, detail=f"Erro interno no servidor ao processar matrícula: {str(mp_e)}")
 
 # ──────────────────────────────────────────────────────────
 # ENDPOINT: Gerar Descrição de Curso com Gemini API
