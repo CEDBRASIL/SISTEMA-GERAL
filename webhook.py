@@ -21,7 +21,7 @@ router = APIRouter()
 # ATENÇÃO: Valores hardcoded - MUITO CUIDADO EM PRODUÇÃO!
 # Substitua os placeholders pelos seus valores reais.
 # ──────────────────────────────────────────────────────────
-MP_ACCESS_TOKEN = "SEU_ACCESS_TOKEN_DO_MERCADO_PAGO" # <--- SUBSTITUA PELO SEU TOKEN REAL
+MP_ACCESS_TOKEN = os.getenv ("MP_ACCESS_TOKEN") 
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1377838283975036928/IgVvwyrBBWflKyXbIU9dgH4PhLwozHzrf-nJpj3w7dsZC-Ds9qN8_Toym3Tnbj-3jdU4" # <--- SEU URL DE WEBHOOK DO DISCORD
 
 # ──────────────────────────────────────────────────────────
