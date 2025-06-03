@@ -26,8 +26,8 @@ UNIDADE_ID  = os.getenv("UNIDADE_ID")
 # ATENÇÃO: Valores hardcoded - MUITO CUIDADO EM PRODUÇÃO!
 # Substitua os placeholders pelos seus valores reais.
 # ──────────────────────────────────────────────────────────
-MP_ACCESS_TOKEN = "SEU_ACCESS_TOKEN_DO_MERCADO_PAGO" # <--- SUBSTITUA PELO SEU TOKEN REAL
-MP_PREAPPROVAL_PLAN_ID = "SEU_ID_DO_PLANO_DE_ASSINATURA_MP" # <--- SUBSTITUA PELO ID DO SEU PLANO REAL
+MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN")
+MP_PREAPPROVAL_PLAN_ID = "S2c93808496d9dcdf0196f2ff3b5f0b11" # <--- SUBSTITUA PELO ID DO SEU PLANO REAL
 THANK_YOU_PAGE_URL = "https://www.cedbrasilia.com.br/obrigado" # <--- SUBSTITUA PELA SUA PÁGINA DE OBRIGADO REAL
 
 # ──────────────────────────────────────────────────────────
