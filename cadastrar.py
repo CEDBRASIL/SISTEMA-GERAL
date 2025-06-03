@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 import requests
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
-from cursos import CURSOS_OM  # Importa o dicionário de mapeamento (CORRIGIDO PARA CURSOS_OM)
+from cursos import CURSOS_OM  # Importa o dicionário de mapeamento
 import json # Importar json para serializar o payload do ChatPro
 
 router = APIRouter()
@@ -14,7 +14,7 @@ BASIC_B64 = os.getenv("BASIC_B64")
 UNIDADE_ID = os.getenv("UNIDADE_ID")
 OM_BASE = os.getenv("OM_BASE")
 
-# Variáveis de Ambiente para ChatPro (AGORA AQUI)
+# Variáveis de Ambiente para ChatPro
 CHATPRO_URL = os.getenv("CHATPRO_URL")
 CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
 
@@ -35,9 +35,9 @@ def _obter_token_unidade() -> str:
     if not all([OM_BASE, BASIC_B64, UNIDADE_ID]):
         raise RuntimeError("Variáveis de ambiente OM não configuradas.")
     url = f"{OM_BASE}/unidades/token/{UNIDADE_ID}"
-    try: # Adicionado try-except para lidar com erros de requisição
+    try:
         r = requests.get(url, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
-        r.raise_for_status() # Levanta HTTPException para erros 4xx/5xx
+        r.raise_for_status()
         if r.json().get("status") == "true":
             return r.json()["data"]["token"]
         raise RuntimeError(f"Falha ao obter token da unidade: Resposta inesperada - {r.text}")
@@ -52,7 +52,7 @@ def _total_alunos() -> int:
     Retorna o total de alunos cadastrados na unidade OM (para gerar CPF).
     """
     url = f"{OM_BASE}/alunos/total/{UNIDADE_ID}"
-    try: # Adicionado try-except para lidar com erros de requisição
+    try:
         r = requests.get(url, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
         r.raise_for_status()
         if r.json().get("status") == "true":
@@ -64,7 +64,7 @@ def _total_alunos() -> int:
 
     # Fallback: busca todos que tenham CPF começando com o prefixo
     url2 = f"{OM_BASE}/alunos?unidade_id={UNIDADE_ID}&cpf_like={CPF_PREFIXO}"
-    try: # Adicionado try-except para lidar com erros de requisição
+    try:
         r2 = requests.get(url2, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
         r2.raise_for_status()
         if r2.json().get("status") == "true":
@@ -97,7 +97,7 @@ def _cpf_em_uso(cpf: str) -> bool:
     Verifica se o CPF já está em uso na base de dados da OM.
     """
     url = f"{OM_BASE}/alunos?unidade_id={UNIDADE_ID}&cpf={cpf}"
-    try: # Adicionado try-except para lidar com erros de requisição
+    try:
         r = requests.get(url, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
         r.raise_for_status()
         if r.json().get("status") == "true":
@@ -146,7 +146,7 @@ def _cadastrar_somente_aluno(
             "unidade_id": UNIDADE_ID,
             "senha": senha_padrao,
         }
-        try: # Adicionado try-except para lidar com erros de requisição
+        try:
             r = requests.post(
                 f"{OM_BASE}/alunos",
                 data=payload,
@@ -184,7 +184,7 @@ def _matricular_aluno_om(aluno_id: str, cursos_ids: List[int], token_key: str) -
     cursos_str = ",".join(map(str, cursos_ids))
     payload = {"token": token_key, "cursos": cursos_str}
     _log(f"[MAT] Matriculando aluno {aluno_id} nos cursos: {cursos_str}")
-    try: # Adicionado try-except para lidar com erros de requisição
+    try:
         r = requests.post(
             f"{OM_BASE}/alunos/matricula/{aluno_id}",
             data=payload,
@@ -330,3 +330,4 @@ async def realizar_matricula(dados: dict):
     except Exception as e:
         _log(f"❌ Erro inesperado em /matricular: {str(e)}")
         raise HTTPException(status_code=500, detail="Erro inesperado. Consulte os logs para mais detalhes.")
+adad
