@@ -1,5 +1,3 @@
-# matricular.py
-
 import os
 import threading
 from typing import List, Tuple, Optional
@@ -15,9 +13,10 @@ BASIC_B64 = os.getenv("BASIC_B64")
 UNIDADE_ID = os.getenv("UNIDADE_ID")
 OM_BASE = os.getenv("OM_BASE")
 
-# Variáveis de ambiente para ChatPro
-CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
-CHATPRO_URL = os.getenv("CHATPRO_URL")  # ex.: "https://v5.chatpro.com.br/chatpro-h9bsk4dljx/api/v1/send_message"
+# Variáveis de ambiente para Call Me Bot (substituindo ChatPro)
+# A chave de API padrão é a que você forneceu no exemplo
+CALLMEBOT_API_KEY = os.getenv("CALLMEBOT_API_KEY", "2712587")
+CALLMEBOT_URL = "https://api.callmebot.com/whatsapp.php"
 
 # Prefixo para gerar CPFs sequenciais na OM
 CPF_PREFIXO = "20254158"
@@ -25,6 +24,9 @@ cpf_lock = threading.Lock()
 
 
 def _log(msg: str):
+    """
+    Função auxiliar para registrar mensagens com timestamp.
+    """
     agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{agora}] {msg}")
 
@@ -36,40 +38,51 @@ def _obter_token_unidade() -> str:
     if not all([OM_BASE, BASIC_B64, UNIDADE_ID]):
         raise RuntimeError("Variáveis de ambiente OM não configuradas.")
     url = f"{OM_BASE}/unidades/token/{UNIDADE_ID}"
-    r = requests.get(
-        url,
-        headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=8
-    )
-    if r.ok and r.json().get("status") == "true":
-        return r.json()["data"]["token"]
-    raise RuntimeError(f"Falha ao obter token da unidade: HTTP {r.status_code}")
+    try:
+        r = requests.get(
+            url,
+            headers={"Authorization": f"Basic {BASIC_B64}"},
+            timeout=8
+        )
+        r.raise_for_status() # Lança exceção para erros HTTP
+        if r.json().get("status") == "true":
+            return r.json()["data"]["token"]
+        raise RuntimeError(f"Falha ao obter token da unidade: Resposta inesperada da OM: {r.text}")
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Erro ao conectar ou obter token da unidade na OM: {e}")
 
 
 def _total_alunos() -> int:
     """
     Retorna o total de alunos cadastrados na unidade OM (para gerar CPF).
+    Prioriza o endpoint de total, com fallback para busca por prefixo de CPF.
     """
-    url = f"{OM_BASE}/alunos/total/{UNIDADE_ID}"
-    r = requests.get(
-        url,
-        headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=8
-    )
-    if r.ok and r.json().get("status") == "true":
-        return int(r.json()["data"]["total"])
+    url_total = f"{OM_BASE}/alunos/total/{UNIDADE_ID}"
+    try:
+        r_total = requests.get(
+            url_total,
+            headers={"Authorization": f"Basic {BASIC_B64}"},
+            timeout=8
+        )
+        if r_total.ok and r_total.json().get("status") == "true":
+            return int(r_total.json()["data"]["total"])
+    except requests.exceptions.RequestException as e:
+        _log(f"Aviso: Falha ao usar endpoint /alunos/total: {e}. Tentando fallback.")
 
     # Fallback: busca todos que tenham CPF começando com o prefixo
-    url2 = f"{OM_BASE}/alunos?unidade_id={UNIDADE_ID}&cpf_like={CPF_PREFIXO}"
-    r2 = requests.get(
-        url2,
-        headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=8
-    )
-    if r2.ok and r2.json().get("status") == "true":
-        return len(r2.json()["data"])
+    url_fallback = f"{OM_BASE}/alunos?unidade_id={UNIDADE_ID}&cpf_like={CPF_PREFIXO}"
+    try:
+        r_fallback = requests.get(
+            url_fallback,
+            headers={"Authorization": f"Basic {BASIC_B64}"},
+            timeout=8
+        )
+        if r_fallback.ok and r_fallback.json().get("status") == "true":
+            return len(r_fallback.json().get("data", []))
+    except requests.exceptions.RequestException as e:
+        _log(f"Aviso: Falha ao usar endpoint /alunos com cpf_like: {e}.")
 
-    raise RuntimeError("Falha ao apurar total de alunos")
+    raise RuntimeError("Falha ao apurar total de alunos (ambos os métodos falharam).")
 
 
 # Melhorias na geração de CPF
@@ -86,7 +99,7 @@ def _proximo_cpf(incremento: int = 0) -> str:
             cpf = CPF_PREFIXO + str(seq).zfill(3)
             if not _cpf_em_uso(cpf):
                 return cpf
-        raise RuntimeError("Limite de tentativas para gerar CPF excedido.")
+        raise RuntimeError("Limite de tentativas para gerar CPF excedido. Não foi possível encontrar um CPF único.")
 
 
 def _cpf_em_uso(cpf: str) -> bool:
@@ -94,14 +107,20 @@ def _cpf_em_uso(cpf: str) -> bool:
     Verifica se o CPF já está em uso na base de dados da OM.
     """
     url = f"{OM_BASE}/alunos?unidade_id={UNIDADE_ID}&cpf={cpf}"
-    r = requests.get(
-        url,
-        headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=8
-    )
-    if r.ok and r.json().get("status") == "true":
-        return len(r.json().get("data", [])) > 0
-    return False
+    try:
+        r = requests.get(
+            url,
+            headers={"Authorization": f"Basic {BASIC_B64}"},
+            timeout=8
+        )
+        r.raise_for_status() # Lança exceção para erros HTTP
+        if r.json().get("status") == "true":
+            return len(r.json().get("data", [])) > 0
+        _log(f"Aviso: Resposta inesperada ao verificar CPF {cpf} em uso: {r.text}")
+        return False # Assume que não está em uso se a resposta for inesperada
+    except requests.exceptions.RequestException as e:
+        _log(f"Erro ao verificar CPF {cpf} em uso: {e}. Assumindo que não está em uso para tentar novamente.")
+        return False # Se houver erro de conexão, assume que não está em uso e tenta gerar outro CPF
 
 
 def _cadastrar_somente_aluno(
@@ -141,23 +160,32 @@ def _cadastrar_somente_aluno(
             "unidade_id": UNIDADE_ID,
             "senha": senha_padrao,
         }
-        r = requests.post(
-            f"{OM_BASE}/alunos",
-            data=payload,
-            headers={"Authorization": f"Basic {BASIC_B64}"},
-            timeout=10
-        )
-        _log(f"[CAD] Tentativa {tentativa+1}/60 | Status {r.status_code} | Retorno OM: {r.text}")
+        try:
+            r = requests.post(
+                f"{OM_BASE}/alunos",
+                data=payload,
+                headers={"Authorization": f"Basic {BASIC_B64}"},
+                timeout=10
+            )
+            _log(f"[CAD] Tentativa {tentativa+1}/60 | Status {r.status_code} | Retorno OM: {r.text}")
 
-        if r.ok and r.json().get("status") == "true":
-            aluno_id = r.json()["data"]["id"]
-            return aluno_id, cpf
+            if r.ok and r.json().get("status") == "true":
+                aluno_id = r.json()["data"]["id"]
+                return aluno_id, cpf
 
-        info = (r.json() or {}).get("info", "").lower()
-        if "já está em uso" not in info:
-            break
+            info = (r.json() or {}).get("info", "").lower()
+            if "já está em uso" not in info and "cpf já cadastrado" not in info:
+                # Se o erro não for sobre CPF em uso, parar e levantar exceção
+                raise RuntimeError(f"Falha no cadastro do aluno na OM: {r.text}")
 
-    raise RuntimeError("Falha ao cadastrar o aluno")
+        except requests.exceptions.RequestException as e:
+            _log(f"[CAD] Erro de conexão/requisição na tentativa {tentativa+1}: {e}")
+        except ValueError: # Erro ao decodificar JSON
+            _log(f"[CAD] Erro ao decodificar JSON na tentativa {tentativa+1}: {r.text}")
+        except Exception as e:
+            _log(f"[CAD] Erro inesperado na tentativa {tentativa+1}: {e}")
+
+    raise RuntimeError("Falha ao cadastrar o aluno após múltiplas tentativas ou erro persistente.")
 
 
 def _matricular_aluno_om(aluno_id: str, cursos_ids: List[int], token_key: str) -> bool:
@@ -172,15 +200,22 @@ def _matricular_aluno_om(aluno_id: str, cursos_ids: List[int], token_key: str) -
     cursos_str = ",".join(map(str, cursos_ids))
     payload = {"token": token_key, "cursos": cursos_str}
     _log(f"[MAT] Matriculando aluno {aluno_id} nos cursos: {cursos_str}")
-    r = requests.post(
-        f"{OM_BASE}/alunos/matricula/{aluno_id}",
-        data=payload,
-        headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=10
-    )
-    sucesso = r.ok and r.json().get("status") == "true"
-    _log(f"[MAT] {'✅' if sucesso else '❌'} Status {r.status_code} | Retorno OM: {r.text}")
-    return sucesso
+    try:
+        r = requests.post(
+            f"{OM_BASE}/alunos/matricula/{aluno_id}",
+            data=payload,
+            headers={"Authorization": f"Basic {BASIC_B64}"},
+            timeout=10
+        )
+        sucesso = r.ok and r.json().get("status") == "true"
+        _log(f"[MAT] {'✅' if sucesso else '❌'} Status {r.status_code} | Retorno OM: {r.text}")
+        return sucesso
+    except requests.exceptions.RequestException as e:
+        _log(f"[MAT] Erro de conexão/requisição ao matricular aluno {aluno_id}: {e}")
+        return False
+    except Exception as e:
+        _log(f"[MAT] Erro inesperado ao matricular aluno {aluno_id}: {e}")
+        return False
 
 
 def _cadastrar_aluno_om(
@@ -209,16 +244,16 @@ def _cadastrar_aluno_om(
     return aluno_id, cpf
 
 
-def _send_whatsapp_chatpro(
+def _send_whatsapp_message(
     nome: str,
     whatsapp: str,
     cursos_nomes: List[str]
 ) -> None:
     """
-    Envia mensagem automática no WhatsApp via ChatPro, com boas-vindas e informações de acesso.
+    Envia mensagem automática no WhatsApp via Call Me Bot, com boas-vindas e informações de acesso.
     """
-    if not all([CHATPRO_TOKEN, CHATPRO_URL]):
-        _log("⚠️ Variáveis de ambiente do ChatPro não configuradas. Pulando envio de WhatsApp.")
+    if not CALLMEBOT_API_KEY:
+        _log("⚠️ Chave de API do Call Me Bot não configurada. Pulando envio de WhatsApp.")
         return
 
     # Garante que o número seja somente dígitos (sem parênteses, espaços ou traços)
@@ -237,35 +272,30 @@ def _send_whatsapp_chatpro(
         f"Qualquer dúvida, estamos à disposição. Boa jornada de estudos! 🚀"
     )
 
-    # Monta o payload conforme a API real do ChatPro
-    payload = {
-        "number": numero_telefone,
-        "message": mensagem
-    }
-
-    # Cabeçalhos corretos: Content-Type e Authorization
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "Authorization": CHATPRO_TOKEN
+    # Monta os parâmetros para a requisição GET do Call Me Bot
+    params = {
+        "phone": f"+{numero_telefone}", # Adiciona o '+' para garantir o formato internacional
+        "text": mensagem,
+        "apikey": CALLMEBOT_API_KEY
     }
 
     try:
-        r = requests.post(
-            CHATPRO_URL,
-            json=payload,
-            headers=headers,
+        r = requests.get(
+            CALLMEBOT_URL,
+            params=params, # Use params para requisições GET
             timeout=10
         )
         if r.ok:
-            _log(f"[CHATPRO] Mensagem enviada com sucesso para {numero_telefone}. Resposta: {r.text}")
+            _log(f"[Call Me Bot] Mensagem enviada com sucesso para {numero_telefone}. Resposta: {r.text}")
         else:
-            _log(f"[CHATPRO] Falha ao enviar mensagem para {numero_telefone}. HTTP {r.status_code} | {r.text}")
-    except Exception as e:
-        _log(f"[CHATPRO] Erro inesperado ao enviar WhatsApp para {numero_telefone}: {str(e)}")
+            _log(f"[Call Me Bot] Falha ao enviar mensagem para {numero_telefone}. HTTP {r.status_code} | {r.text}")
+            if r.text:
+                _log(f"[Call Me Bot] Detalhes do erro: {r.text}")
+    except requests.exceptions.RequestException as e:
+        _log(f"[Call Me Bot] Erro inesperado ao enviar WhatsApp para {numero_telefone}: {str(e)}")
 
 
-@router.post("/", summary="Cadastra (e opcionalmente matricula) um aluno na OM e envia WhatsApp via ChatPro")
+@router.post("/", summary="Cadastra (e opcionalmente matricula) um aluno na OM e envia WhatsApp via Call Me Bot")
 async def realizar_matricula(dados: dict):
     """
     Espera um JSON com:
@@ -307,8 +337,15 @@ async def realizar_matricula(dados: dict):
         # 2) cadastra aluno e matricula
         aluno_id, cpf = _cadastrar_aluno_om(nome, whatsapp, email, cursos_ids, token_unit)
 
-        # 3) envia mensagem automática no WhatsApp via ChatPro
-        _send_whatsapp_chatpro(nome, whatsapp, cursos_nomes)
+        # 3) envia mensagem automática no WhatsApp via Call Me Bot
+        _send_whatsapp_message(nome, whatsapp, cursos_nomes)
+
+        # Log de sucesso detalhado conforme solicitado
+        _log("✅ MATRÍCULA REALIZADA COM SUCESSO")
+        _log(f"👤 Nome: {nome}")
+        _log(f"📄 CPF: {cpf}")
+        _log(f"📱 Celular: {whatsapp}")
+        _log(f"🎓 Cursos: {cursos_ids}")
 
         return {
             "status": "ok",
