@@ -330,4 +330,3 @@ async def realizar_matricula(dados: dict):
     except Exception as e:
         _log(f"❌ Erro inesperado em /matricular: {str(e)}")
         raise HTTPException(status_code=500, detail="Erro inesperado. Consulte os logs para mais detalhes.")
-adad
