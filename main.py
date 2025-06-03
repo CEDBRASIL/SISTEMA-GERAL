@@ -4,9 +4,10 @@ main.py
 Ponto de entrada da API FastAPI da CED.
 
 Inclui roteadores:
-    • /cursos              → lista de cursos (cursos.py)
-    • /api/auth            → autenticação (secure.py)
-    
+    • /cursos             → lista de cursos (cursos.py)
+    • /api/auth           → autenticação (secure.py)
+    • /api                → matrícula (matricular.py)
+    • /api/webhook        → webhooks (webhook.py)
 
 CORS aberto por padrão; ajuste a lista ORIGINS no .env se precisar restringir.
 """
@@ -18,8 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import cursos
 import secure
 import matricular
-import webhook
-
+import webhook # <--- IMPORT DO NOVO FICHEIRO DE WEBHOOK
 
 # ──────────────────────────────────────────────────────────
 # Instância FastAPI
@@ -52,10 +52,11 @@ app.add_middleware(
 # ──────────────────────────────────────────────────────────
 # Registrar roteadores
 # ──────────────────────────────────────────────────────────
-app.include_router(cursos.router,      prefix="/cursos",      tags=["Cursos"])
-app.include_router(secure.router, tags=["Autenticação"])
-app.include_router(matricular.router,  prefix="/api",         tags=["Matrícula"])
-app.include_router(webhook.router, prefix="/webhook" tags=["Webhook"])
+app.include_router(cursos.router,       prefix="/cursos",      tags=["Cursos"])
+app.include_router(secure.router,       tags=["Autenticação"])
+app.include_router(matricular.router,   prefix="/api",         tags=["Matrícula"])
+# CORREÇÃO: Adicionada uma vírgula entre o prefixo e as tags
+app.include_router(webhook.router,      prefix="/api",         tags=["Webhooks"])
 
 
 # ──────────────────────────────────────────────────────────
