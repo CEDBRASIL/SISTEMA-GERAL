@@ -240,6 +240,7 @@ async def _process_webhook(payload: dict):
             "🌐 *Portal do aluno:* https://ead.cedbrasilia.com.br\n"
             "📲 *App Android:* https://play.google.com/store/apps/details?id=br.com.om.app&hl=pt_BR\n"
             "📱 *App iOS:* https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
+            "🌐 *Site da Escola* https://www.cedbrasilia.com.br\n"
         )
 
         resp_whatsapp = requests.post(
