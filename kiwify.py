@@ -2,7 +2,7 @@ import requests
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException
 
-from cursos import CURSOS_OM
+from cursos import cursos  # Agora puxando da variável 'cursos' da CED
 from matricular import (
     _obter_token_unidade,
     _matricular_aluno_om,
@@ -16,7 +16,6 @@ from matricular import (
 
 router = APIRouter()
 
-
 def _cadastrar_aluno_com_cpf(
     nome: str,
     whatsapp: str,
@@ -26,7 +25,6 @@ def _cadastrar_aluno_com_cpf(
     token_key: str,
     senha_padrao: str = "123456",
 ) -> str:
-    """Cadastra o aluno na OM usando o CPF fornecido e matricula nos cursos."""
     email_validado = email or f"{whatsapp}@nao-informado.com"
 
     payload = {
@@ -71,7 +69,6 @@ def _cadastrar_aluno_com_cpf(
 
 
 def _buscar_aluno_id_por_cpf(cpf: str) -> Optional[str]:
-    """Retorna o ID do aluno na OM a partir do CPF informado."""
     r = requests.get(
         f"{OM_BASE}/alunos",
         headers={"Authorization": f"Basic {BASIC_B64}"},
@@ -86,7 +83,6 @@ def _buscar_aluno_id_por_cpf(cpf: str) -> Optional[str]:
 
 
 def _excluir_aluno_om(aluno_id: str) -> None:
-    """Exclui um aluno na OM."""
     r = requests.delete(
         f"{OM_BASE}/alunos/{aluno_id}",
         headers={"Authorization": f"Basic {BASIC_B64}"},
@@ -133,9 +129,9 @@ async def receber_webhook(dados: dict):
         raise HTTPException(400, detail="Dados incompletos no payload")
 
     cursos_ids: List[int] = []
-    chave = next((k for k in CURSOS_OM if k.lower() == (curso_nome or "").lower()), None)
+    chave = next((k for k in cursos if k.lower() == (curso_nome or "").lower()), None)
     if chave:
-        cursos_ids.extend(CURSOS_OM[chave])
+        cursos_ids.extend(cursos[chave])
 
     try:
         token_unit = _obter_token_unidade()
