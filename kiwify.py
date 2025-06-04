@@ -41,11 +41,39 @@ def obter_token_unidade () -> str | Nenhum :
         )
         dados = resp.json()
         se resp.ok e dados.get( "status" ) == "true" :
-  
-            TOKEN_UNIDADE = dados[ "dados" ][ "token" ]
-            enviar_log_discord( "🔁 Token atualizado com sucesso!" )
-            retornar TOKEN_UNIDADE
-        enviar_log_discord( f"❌ Erro ao obter token: {dados} " )
+import unicodedata
+import difflib
+
+
+def _normalize(text: str) -> str:
+    """Remove acentos e converte para caixa baixa."""
+    return (
+        unicodedata.normalize("NFKD", text or "")
+        .encode("ASCII", "ignore")
+        .decode()
+        .lower()
+    )
+
+
+    """Tenta obter os cursos pelo nome do plano de forma flexível."""
+    if not nome_plano:
+        return None
+
+    norm_plano = _normalize(nome_plano)
+
+    # Correspondência direta (ignorando acentos e caixa)
+    for key in CURSOS_OM:
+        if _normalize(key) == norm_plano:
+            return CURSOS_OM[key]
+
+    # Procurar nome aproximado em caso de pequenos erros de digitação
+    nomes_norm = {_normalize(k): k for k in CURSOS_OM}
+    match = difflib.get_close_matches(norm_plano, nomes_norm.keys(), n=1, cutoff=0.8)
+    if match:
+        return CURSOS_OM[nomes_norm[match[0]]]
+
+    return None
+async def _process_webhook(payload: dict):
     exceto Exceção como e:
         enviar_log_discord( f"❌ Exceção ao obter token: {e} " )
     retornar Nenhum 
@@ -210,6 +238,17 @@ async def webhook ( carga útil: dict ):
             "cursos" : "," .join( str (c) para c em cursos_ids),
         }
 
+
+
+@router.post("/webhook")
+async def webhook(payload: dict):
+    return await _process_webhook(payload)
+
+
+@router.post("/")
+async def webhook_root(payload: dict):
+    """Endpoint alternativo para Kiwify que envia para /kiwify/"""
+    return await _process_webhook(payload)
         resp_matricula = requests.post(
             f" {OM_BASE} /alunos/matricula/ {aluno_id} " ,
             dados=dados_matricula,
