@@ -3,7 +3,8 @@ from typing import Dict, List
 
 router = APIRouter()
 
-CURSOS: Dict[str, List[int]] = {
+# Mapeamento de nomes de cursos do CED para os IDs de disciplinas na OM
+CURSOS_OM: Dict[str, List[int]] = {
     "Excel PRO": [161, 197, 201],
     "Design Gráfico": [254, 751, 169],
     "Analista e Desenvolvimento de Sistemas": [590, 176, 239, 203],
@@ -19,4 +20,5 @@ CURSOS: Dict[str, List[int]] = {
 
 @router.get("/", summary="Lista de cursos disponíveis")
 async def listar_cursos():
-    return {"cursos": CURSOS}
+    """Retorna o mapeamento de cursos do CED para as disciplinas da OM."""
+    return {"cursos": CURSOS_OM}
