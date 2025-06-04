@@ -1,7 +1,8 @@
 from typing import List, Optional
 import os
+import json
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from cursos import CURSOS_OM
 from matricular import (
@@ -83,8 +84,20 @@ def _cadastrar_aluno_kiwify(
     return aluno_id
 
 
-@router.post("/", summary="Recebe Webhook da Kiwify para pedidos aprovados")
-async def receber_webhook(dados: dict):
+@router.post("", summary="Recebe Webhook da Kiwify para pedidos aprovados")
+async def receber_webhook(request: Request):
+    try:
+        dados = await request.json()
+    except Exception:
+        form = await request.form()
+        payload = form.get("payload") or form.get("data")
+        if not payload:
+            raise HTTPException(status_code=400, detail="Payload inválido")
+        try:
+            dados = json.loads(payload)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Payload inválido")
+
     if dados.get("webhook_event_type") != "order_approved":
         return {"status": "ignored"}
 
@@ -113,3 +126,6 @@ async def receber_webhook(dados: dict):
     except Exception as e:
         _log(f"❌ Erro em /kiwify: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Também aceita requisições com barra no final (/kiwify/)
+router.add_api_route("/", receber_webhook, methods=["POST"], include_in_schema=False)
