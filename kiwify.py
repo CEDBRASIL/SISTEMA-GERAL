@@ -2,6 +2,9 @@ from typing import List, Optional
 import os
 import json
 import requests
+import hmac
+import hashlib
+from urllib.parse import parse_qs
 from fastapi import APIRouter, HTTPException, Request
 
 from cursos import CURSOS_OM
@@ -18,6 +21,8 @@ from matricular import (
 )
 
 router = APIRouter()
+
+KIWIFY_TOKEN = os.getenv("KIWIFY_TOKEN")
 
 
 def _cadastrar_somente_aluno_com_cpf(
@@ -85,16 +90,25 @@ def _cadastrar_aluno_kiwify(
 
 
 @router.post("", summary="Recebe Webhook da Kiwify para pedidos aprovados")
-async def receber_webhook(request: Request):
+async def receber_webhook(request: Request, signature: Optional[str] = None):
+    body_bytes = await request.body()
+
+    if KIWIFY_TOKEN:
+        if not signature:
+            raise HTTPException(status_code=401, detail="Assinatura ausente")
+        calc_sig = hmac.new(KIWIFY_TOKEN.encode(), body_bytes, hashlib.sha1).hexdigest()
+        if signature != calc_sig:
+            raise HTTPException(status_code=401, detail="Assinatura inválida")
+
     try:
-        dados = await request.json()
+        dados = json.loads(body_bytes.decode())
     except Exception:
-        form = await request.form()
-        payload = form.get("payload") or form.get("data")
+        qs = parse_qs(body_bytes.decode())
+        payload = (qs.get("payload") or qs.get("data"))
         if not payload:
             raise HTTPException(status_code=400, detail="Payload inválido")
         try:
-            dados = json.loads(payload)
+            dados = json.loads(payload[0])
         except Exception:
             raise HTTPException(status_code=400, detail="Payload inválido")
 
