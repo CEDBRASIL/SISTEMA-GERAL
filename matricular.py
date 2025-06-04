@@ -17,8 +17,9 @@ OM_BASE = os.getenv("OM_BASE")
 CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
 CHATPRO_URL = os.getenv("CHATPRO_URL")  # ex.: "https://v5.chatpro.com.br/chatpro-h9bsk4dljx/api/v1/send_message"
 
-# ** CONSTANTE DO WEBHOOK DISCORD **
-DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1377838283975036928/IgVvwyrBBWflKyXbIU9dgH4PhLwozHzrf-nJpj3w7dsZC-Ds9qN8_Toym3Tnbj-3jdU4"
+# Webhook do Discord para logs
+# Agora configurável via variável de ambiente para evitar expor o token
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 # Prefixo para gerar CPFs sequenciais na OM
 CPF_PREFIXO = "20254158"
