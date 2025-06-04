@@ -4,11 +4,9 @@ main.py
 Ponto de entrada da API FastAPI da CED.
 
 Inclui roteadores:
-    • /cursos             → lista de cursos (cursos.py)
-    • /api/auth           → autenticação (secure.py)
-    • /api                → matrícula (matricular.py)
-    • /api/webhook        → webhooks (webhook.py)
-    • /cadastrar          → cadastro/matrícula OM e ChatPro (cadastrar.py)
+    • /cursos      → lista de cursos (cursos.py)
+    • /secure      → autenticação (secure.py)
+    • /matricular  → cadastro e matrícula (matricular.py)
 
 CORS aberto por padrão; ajuste a lista ORIGINS no .env se precisar restringir.
 """
