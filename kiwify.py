@@ -2,7 +2,8 @@ import requests
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException
 
-from cursos import cursos  # Agora puxando da variável 'cursos' da CED
+# Mapeamento de nomes de cursos disponíveis para os IDs de disciplinas na OM
+from cursos import CURSOS_OM
 from matricular import (
     _obter_token_unidade,
     _matricular_aluno_om,
@@ -129,9 +130,9 @@ async def receber_webhook(dados: dict):
         raise HTTPException(400, detail="Dados incompletos no payload")
 
     cursos_ids: List[int] = []
-    chave = next((k for k in cursos if k.lower() == (curso_nome or "").lower()), None)
+    chave = next((k for k in CURSOS_OM if k.lower() == (curso_nome or "").lower()), None)
     if chave:
-        cursos_ids.extend(cursos[chave])
+        cursos_ids.extend(CURSOS_OM[chave])
 
     try:
         token_unit = _obter_token_unidade()
