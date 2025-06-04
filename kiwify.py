@@ -1,5 +1,5 @@
-de fastapi importar APIRouter, Solicitação, Depende , HTTPException
-de fastapi.responses importar JSONResponse
+fastapi importar APIRouter, Solicitação, Depende , HTTPException
+fastapi.responses importar JSONResponse
 importar sistema operacional
 importar json
 solicitações
