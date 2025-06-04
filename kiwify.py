@@ -1,5 +1,6 @@
 import requests
 from typing import Optional, List
+import unicodedata
 from fastapi import APIRouter, HTTPException
 
 # Mapeamento de nomes de cursos disponíveis para os IDs de disciplinas na OM
@@ -94,6 +95,23 @@ def _excluir_aluno_om(aluno_id: str) -> None:
         raise RuntimeError("Falha ao excluir aluno")
 
 
+def _normalizar(texto: str) -> str:
+    """Remove acentos e converte para minúsculas para comparação."""
+    nfkd = unicodedata.normalize("NFKD", texto)
+    return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
+
+
+def _ids_curso_por_nome(nome: Optional[str]) -> List[int]:
+    """Retorna IDs de disciplinas para o nome de curso informado."""
+    if not nome:
+        return []
+    alvo = _normalizar(nome)
+    for chave, ids in CURSOS_OM.items():
+        if _normalizar(chave) == alvo:
+            return ids
+    return []
+
+
 @router.post("/", summary="Webhook Kiwify - eventos de pedido")
 async def receber_webhook(dados: dict):
     evento = dados.get("webhook_event_type")
@@ -129,10 +147,7 @@ async def receber_webhook(dados: dict):
     if not all([nome, cpf, whatsapp]):
         raise HTTPException(400, detail="Dados incompletos no payload")
 
-    cursos_ids: List[int] = []
-    chave = next((k for k in CURSOS_OM if k.lower() == (curso_nome or "").lower()), None)
-    if chave:
-        cursos_ids.extend(CURSOS_OM[chave])
+    cursos_ids = _ids_curso_por_nome(curso_nome)
 
     try:
         token_unit = _obter_token_unidade()
