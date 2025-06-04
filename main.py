@@ -1,19 +1,3 @@
-"""
-main.py
-───────
-Ponto de entrada da API FastAPI da CED.
-BACKEND CED BY FurioNnzxT
-Inclui roteadores:
-    • /cursos             → lista de cursos (cursos.py)
-    • /cursosom           → lista de cursos Ouro Moderno (cursosom.py)
-    • /api/auth           → autenticação (secure.py)
-    • /matricular         → matrícula de alunos (matricular.py)
-    • /alunos             → gestão de alunos (alunos.py)
-   
-
-CORS aberto por padrão; ajuste a lista ORIGINS no .env se precisar restringir.
-"""
-
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +7,7 @@ import cursosom
 import secure
 import matricular
 import alunos
-
+import kiwify
 
 # ──────────────────────────────────────────────────────────
 # Instância da aplicação FastAPI
@@ -60,6 +44,8 @@ app.include_router(cursosom.router,   prefix="/cursosom",   tags=["Cursos OM"])
 app.include_router(secure.router,                        tags=["Autenticação"])
 app.include_router(matricular.router, prefix="/matricular", tags=["Matrícula"])
 app.include_router(alunos.router,     prefix="/alunos",     tags=["Alunos"])
+app.include_router(kiwify.router, prefix="/kiwify", tags=["Kiwify"])
+
 
 
 # ──────────────────────────────────────────────────────────
