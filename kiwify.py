@@ -70,9 +70,54 @@ def _cadastrar_aluno_com_cpf(
     return aluno_id
 
 
-@router.post("/", summary="Webhook Kiwify - pagamento aprovado")
+def _buscar_aluno_id_por_cpf(cpf: str) -> Optional[str]:
+    """Retorna o ID do aluno na OM a partir do CPF informado."""
+    r = requests.get(
+        f"{OM_BASE}/alunos",
+        headers={"Authorization": f"Basic {BASIC_B64}"},
+        params={"cpf": cpf},
+        timeout=10,
+    )
+    if r.ok and r.json().get("status") == "true":
+        data = r.json().get("data") or []
+        if data:
+            return data[0].get("id")
+    return None
+
+
+def _excluir_aluno_om(aluno_id: str) -> None:
+    """Exclui um aluno na OM."""
+    r = requests.delete(
+        f"{OM_BASE}/alunos/{aluno_id}",
+        headers={"Authorization": f"Basic {BASIC_B64}"},
+        timeout=10,
+    )
+    _log(f"[DEL] Status {r.status_code} | Retorno OM: {r.text}")
+    if not (r.ok and r.json().get("status") == "true"):
+        raise RuntimeError("Falha ao excluir aluno")
+
+
+@router.post("/", summary="Webhook Kiwify - eventos de pedido")
 async def receber_webhook(dados: dict):
-    if dados.get("webhook_event_type") != "order_approved":
+    evento = dados.get("webhook_event_type")
+
+    if evento == "order_refunded":
+        customer = dados.get("Customer", {})
+        cpf = customer.get("CPF")
+        if not cpf:
+            raise HTTPException(400, detail="CPF não informado")
+
+        aluno_id = _buscar_aluno_id_por_cpf(cpf)
+        if not aluno_id:
+            raise HTTPException(404, detail="Aluno não encontrado")
+        try:
+            _excluir_aluno_om(aluno_id)
+            return {"status": "excluido", "aluno_id": aluno_id}
+        except RuntimeError as e:
+            _log(f"❌ Erro ao excluir aluno: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    if evento != "order_approved":
         return {"status": "ignorado"}
 
     customer = dados.get("Customer", {})
