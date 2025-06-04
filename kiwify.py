@@ -1,230 +1,255 @@
-from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import JSONResponse
-import os
-import json
-import requests
-from cursos import CURSOS_OM
+de fastapi importar APIRouter, Solicitação, Depende , HTTPException
+de fastapi.responses importar JSONResponse
+importar sistema operacional
+importar json
+solicitações
+ de importação
+de cursos importar CURSOS_OM
 
-router = APIRouter()
+roteador = APIRouter()
 
-OM_BASE = os.getenv("OM_BASE")
-BASIC_B64 = os.getenv("BASIC_B64")
-CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
-CHATPRO_URL = os.getenv("CHATPRO_URL")
-UNIDADE_ID = os.getenv("UNIDADE_ID")
-DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
+OM_BASE = os.getenv( "OM_BASE" )
+BASIC_B64 = os.getenv( "BASIC_B64" )
+CHATPRO_TOKEN = os.getenv( "CHATPRO_TOKEN" )
+CHATPRO_URL = os.getenv( "CHATPRO_URL" )
+UNIDADE_ID = os.getenv( "UNIDADE_ID" )
+DISCORD_WEBHOOK = os.getenv( "DISCORD_WEBHOOK" )
 
-TOKEN_UNIDADE = None
-
-
-def enviar_log_discord(mensagem: str) -> None:
-    if not DISCORD_WEBHOOK:
-        print("Discord webhook não configurado")
-        return
-    try:
-        resp = requests.post(DISCORD_WEBHOOK, json={"content": mensagem})
-        if resp.status_code != 204:
-            print("❌ Falha ao enviar log para Discord:", resp.text)
-    except Exception as e:
-        print("❌ Erro ao enviar log para Discord:", str(e))
+TOKEN_UNIDADE = Nenhum
 
 
-def obter_token_unidade() -> str | None:
+def enviar_log_discord ( mensagem: str ) -> Nenhum :
+ 
+    se não for DISCORD_WEBHOOK:
+ 
+        print ( "Discord webhook não configurado" )
+        retornar
+    tentar :
+        resp = requests.post(DISCORD_WEBHOOK, json={ "content" : mensagem})
+        se resp.status_code != 204 :
+            print ( "❌ Falha ao enviar log para Discord:" , resp.text)
+    exceto Exceção como e:
+        print ( "❌ Erro ao enviar log para Discord:" , str (e))
+
+
+def obter_token_unidade () -> str | Nenhum :
     global TOKEN_UNIDADE
-    try:
-        resp = requests.get(
-            f"{OM_BASE}/unidades/token/{UNIDADE_ID}",
-            headers={"Authorization": f"Basic {BASIC_B64}"},
+    tentar :
+        resp= solicitações.obter(
+            f" {OM_BASE} /unidades/token/ {UNIDADE_ID} " ,
+            cabeçalhos={ "Autorização" : f"Básico {BASIC_B64} " },
         )
         dados = resp.json()
-        if resp.ok and dados.get("status") == "true":
-            TOKEN_UNIDADE = dados["data"]["token"]
-            enviar_log_discord("🔁 Token atualizado com sucesso!")
-            return TOKEN_UNIDADE
-        enviar_log_discord(f"❌ Erro ao obter token: {dados}")
-    except Exception as e:
-        enviar_log_discord(f"❌ Exceção ao obter token: {e}")
-    return None
+        se resp.ok e dados.get( "status" ) == "true" :
+  
+            TOKEN_UNIDADE = dados[ "dados" ][ "token" ]
+            enviar_log_discord( "🔁 Token atualizado com sucesso!" )
+            retornar TOKEN_UNIDADE
+        enviar_log_discord( f"❌ Erro ao obter token: {dados} " )
+    exceto Exceção como e:
+        enviar_log_discord( f"❌ Exceção ao obter token: {e} " )
+    retornar Nenhum 
 
 
-def buscar_aluno_por_cpf(cpf: str) -> str | None:
-    try:
-        resp = requests.get(
-            f"{OM_BASE}/alunos",
-            headers={"Authorization": f"Basic {BASIC_B64}"},
-            params={"cpf": cpf},
+def buscar_aluno_por_cpf ( cpf: str ) -> str | Nenhum :
+ 
+    tentar :
+        resp = solicitações.obter(
+            f" {OM_BASE} /alunos" ,
+            cabeçalhos={ "Autorização" : f"Básico {BASIC_B64} " },
+            parâmetros={ "cpf" : cpf},
         )
-        if not resp.ok:
-            enviar_log_discord(f"❌ Falha ao buscar aluno: {resp.text}")
-            return None
-        alunos = resp.json().get("data", [])
-        if not alunos:
-            return None
-        return alunos[0].get("id")
-    except Exception as e:
-        enviar_log_discord(f"❌ Erro ao buscar aluno: {e}")
-        return None
+        se não resp.ok:
+ 
+            enviar_log_discord( f"❌ Falha ao buscar aluno: {resp.text} " )
+            retornar Nenhum 
+        alunos = resp.json().get( "dados" , [])
+        se não alunos:
+ 
+            retornar Nenhum 
+        retornar alunos[ 0 ].get( "id" )
+    exceto Exceção como e:
+        enviar_log_discord( f"❌ Erro ao buscar aluno: {e} " )
+        retornar Nenhum 
 
 
-def log_request_info(request: Request) -> None:
+def obter_cursos_ids ( nome_plano: str ):
+ 
+    """Busca cursos ignorando diferença de caixa."""
+    chave = next ((k para k em CURSOS_OM se k.lower() == nome_plano.lower()), Nenhum )
+    return CURSOS_OM.get(chave) if chave else Nenhuma 
+
+
+def log_request_info ( solicitação: Solicitação ) -> Nenhum :
+ 
     mensagem = (
-        f"\n📥 Requisição recebida:\n"
-        f"🔗 URL completa: {request.url}\n"
-        f"📍 Método: {request.method}\n"
-        f"📦 Cabeçalhos: {dict(request.headers)}"
+        f"\n 📥 Requisição recebida:\n"
+        f" 🔗 URL completa: {request.url} \n"
+        f" 📍 Método: {request.method} \n"
+        f" 📦 Cabeçalhos: { dict (request.headers)} "
     )
-    print(mensagem)
+    imprimir (mensagem)
     enviar_log_discord(mensagem)
 
 
-router.dependencies.append(Depends(log_request_info))
+router.dependencies.append(Depende(log_request_info))
 
 # Inicializa token ao importar o módulo
 TOKEN_UNIDADE = obter_token_unidade()
 
 
-@router.get("/secure")
-async def secure_check():
+@router.get( "/seguro" )
+async def secure_check ():
+  
     novo = obter_token_unidade()
-    if novo:
-        return "🔐 Token atualizado com sucesso via /secure"
-    return JSONResponse(content="❌ Falha ao atualizar token via /secure", status_code=500)
+    se novo:
+        return "🔐 Token atualizado com sucesso via /secure" 
+    return JSONResponse(content= "❌ Falha ao atualizar token via /secure" , status_code= 500 )
 
 
-@router.post("/webhook")
-async def webhook(payload: dict):
-    try:
-        evento = payload.get("webhook_event_type")
+@router.post( "/webhook" )
+async def webhook ( carga útil: dict ):
+  
+    tentar :
+        evento = payload.get( "webhook_event_type" )
 
-        if evento == "order_refunded":
-            customer = payload.get("Customer", {})
-            cpf = customer.get("CPF", "").replace(".", "").replace("-", "")
-            if not cpf:
-                msg = "❌ CPF do aluno não encontrado no payload de reembolso."
+        se evento == "pedido_reembolsado" :
+            cliente = payload.get( "Cliente" , {})
+            cpf = cliente.obter( "CPF" , "" ).substituir( "." , "" ).substituir( "-" , "" )
+            se não for cpf:
+ 
+                msg = "❌ CPF do aluno não encontrado sem carga de reembolso."
                 enviar_log_discord(msg)
-                return JSONResponse(status_code=400, content={"error": "CPF do aluno não encontrado."})
+                return JSONResponse(status_code= 400 , content={ "error" : "CPF do aluno não encontrado." })
 
             aluno_id = buscar_aluno_por_cpf(cpf)
-            if not aluno_id:
+            se não for aluno_id:
+ 
                 msg = "❌ ID do aluno não encontrado para o CPF fornecido."
                 enviar_log_discord(msg)
-                return JSONResponse(status_code=400, content={"error": "ID do aluno não encontrado."})
+                return JSONResponse(status_code= 400 , content={ "error" : "ID do aluno não encontrado." })
 
             resp_exclusao = requests.delete(
-                f"{OM_BASE}/alunos/{aluno_id}",
-                headers={"Authorization": f"Basic {BASIC_B64}"},
+                f" {OM_BASE} /alunos/ {aluno_id} " ,
+                cabeçalhos={ "Autorização" : f"Básico {BASIC_B64} " },
             )
-            if not resp_exclusao.ok:
-                msg = (
-                    f"❌ ERRO AO EXCLUIR ALUNO\nAluno ID: {aluno_id}\n🔧 Detalhes: {resp_exclusao.text}"
+            se não resp_exclusao.ok:
+ 
+                mensagem = (
+                    f"❌ ERRO AO EXCLUIR ALUNO\nAluno ID: {aluno_id} \n🔧 Detalhes: {resp_exclusao.text} "
                 )
                 enviar_log_discord(msg)
-                return JSONResponse(status_code=500, content={"error": "Falha ao excluir aluno", "detalhes": resp_exclusao.text})
+                return JSONResponse(status_code= 500 , content={ "error" : "Falha ao excluir aluno" , " detalhes" : resp_exclusao.text})
 
-            msg = f"✅ Conta do aluno com ID {aluno_id} excluída com sucesso."
+            msg = f"✅ Conta do aluno com ID {aluno_id} arquivo com sucesso."
             enviar_log_discord(msg)
-            return {"message": "Conta do aluno excluída com sucesso."}
+            return { "message" : "Conta do aluno com sucesso." }
 
-        if evento != "order_approved":
-            return {"message": "Evento ignorado"}
+        se evento != "order_approved" :
+            return { "message" : "Evento ignorado" }
 
-        customer = payload.get("Customer", {})
-        nome = customer.get("full_name")
-        cpf = customer.get("CPF", "").replace(".", "").replace("-", "")
-        email = customer.get("email")
-        celular = customer.get("mobile") or "(00) 00000-0000"
-        cidade = customer.get("city") or ""
-        estado = customer.get("state") or ""
-        endereco = (customer.get("street") or "") + ", " + str(customer.get("number") or "")
-        bairro = customer.get("neighborhood") or ""
-        complemento = customer.get("complement") or ""
-        cep = customer.get("zipcode") or ""
+        cliente = payload.get( "Cliente" , {})
+        nome = cliente.get( "nome_completo" )
+        cpf = cliente.obter( "CPF" , "" ).substituir( "." , "" ).substituir( "-" , "" )
+        email = cliente.get( "email" )
+        celular = cliente.get( "mobile" ) ou "(00) 00000-0000" 
+        cidade = cliente.get( "cidade" ) ou "" 
+        estado = cliente.get( "estado" ) ou "" 
+        endereco = (cliente.get( "rua" ) ou "" ) + ", " + str (cliente.get( "número" ) ou "" )
+  
+        bairro = cliente.get( "bairro" ) ou "" 
+        complemento = customer.get( "complemento" ) ou "" 
+        cep = cliente.get( "cep" ) ou "" 
 
-        plano_assinatura = payload.get("Subscription", {}).get("plan", {}).get("name")
-        cursos_ids = CURSOS_OM.get(plano_assinatura)
-        if not cursos_ids:
-            return JSONResponse(status_code=400, content={"error": f"Plano '{plano_assinatura}' não mapeado."})
+        plano_assinatura = payload.get( "Assinatura" , {}).get( "plano" , {}).get( "nome" )
+        cursos_ids = obter_cursos_ids(plano_assinatura)
+        se não cursos_ids:
+ 
+            return JSONResponse(status_code= 400 , content={ "error" : f"Plano ' {plano_assinatura} ' não mapeado." })
 
         dados_aluno = {
-            "token": TOKEN_UNIDADE,
-            "nome": nome,
-            "data_nascimento": "2000-01-01",
-            "email": email,
-            "fone": celular,
-            "senha": "123456",
-            "celular": celular,
-            "doc_cpf": cpf,
-            "doc_rg": "00000000000",
-            "pais": "Brasil",
-            "uf": estado,
-            "cidade": cidade,
-            "endereco": endereco,
-            "complemento": complemento,
-            "bairro": bairro,
-            "cep": cep,
+            "token" : TOKEN_UNIDADE,
+            "nome" : nome,
+            "data_nascimento" : "2000-01-01" ,
+            "e-mail" : e-mail,
+            "fone" : celular,
+            "senha" : "123456" ,
+            "celular" : celular,
+            "doc_cpf" : cpf,
+            "doc_rg" : "00000000000" ,
+            "pais" : "Brasil" ,
+            "uf" : estado,
+            "cidade" : cidade,
+            "endereco" : endereco,
+            "complemento" : complemento,
+            "bairro" : bairro,
+            "cep" : cep,
         }
 
         resp_cadastro = requests.post(
-            f"{OM_BASE}/alunos",
-            data=dados_aluno,
-            headers={"Authorization": f"Basic {BASIC_B64}"},
+            f" {OM_BASE} /alunos" ,
+            dados=dados_aluno,
+            cabeçalhos={ "Autorização" : f"Básico {BASIC_B64} " },
         )
-        aluno_response = resp_cadastro.json()
-        if not resp_cadastro.ok or aluno_response.get("status") != "true":
-            msg = f"❌ ERRO NO CADASTRO: {resp_cadastro.text}"
+        aluno_resposta = resp_cadastro.json()
+        se não resp_cadastro.ok ou aluno_response.get( "status" ) != "true" :
+ 
+            msg = f"❌ ERRO NO CADASTRO: {resp_cadastro.text} "
             enviar_log_discord(msg)
-            return JSONResponse(status_code=500, content={"error": "Falha ao criar aluno", "detalhes": resp_cadastro.text})
+            return JSONResponse(status_code= 500 , content={ "error" : "Falha ao criar aluno" , "detalhes " : resp_cadastro.text})
 
-        aluno_id = aluno_response.get("data", {}).get("id")
-        if not aluno_id:
+        aluno_id = aluno_response.get( "dados" , {}).get( "id" )
+        se não for aluno_id:
+ 
             msg = "❌ ID do aluno não retornado!"
             enviar_log_discord(msg)
-            return JSONResponse(status_code=500, content={"error": "ID do aluno não encontrado na resposta de cadastro."})
+            return JSONResponse(status_code= 500 , content={ "error" : "ID do aluno não encontrado na resposta de cadastro." })
 
         dados_matricula = {
-            "token": TOKEN_UNIDADE,
-            "cursos": ",".join(str(c) for c in cursos_ids),
+            "token" : TOKEN_UNIDADE,
+            "cursos" : "," .join( str (c) para c em cursos_ids),
         }
 
         resp_matricula = requests.post(
-            f"{OM_BASE}/alunos/matricula/{aluno_id}",
-            data=dados_matricula,
-            headers={"Authorization": f"Basic {BASIC_B64}"},
+            f" {OM_BASE} /alunos/matricula/ {aluno_id} " ,
+            dados=dados_matricula,
+            cabeçalhos={ "Autorização" : f"Básico {BASIC_B64} " },
         )
-        if not resp_matricula.ok or resp_matricula.json().get("status") != "true":
-            msg = f"❌ ERRO NA MATRÍCULA\nAluno ID: {aluno_id}\n🔧 Detalhes: {resp_matricula.text}"
+        se não resp_matricula.ok ou resp_matricula.json().get( "status" ) != "true" :
+ 
+            msg = f"❌ ERRO NA MATRÍCULA\nAluno ID: {aluno_id} \n🔧 Detalhes: {resp_matricula.text} "
             enviar_log_discord(msg)
-            return JSONResponse(status_code=500, content={"error": "Falha ao matricular", "detalhes": resp_matricula.text})
+            return JSONResponse(status_code= 500 , content={ "error" : "Falha ao matricular" , "detalhes" : resp_matricula.text})
 
-        numero_whatsapp = "55" + "".join(filter(str.isdigit, celular))[-11:]
+        numero_whatsapp = "55" + "" .join( filter ( str .isdigit, celular))[- 11 :]
         mensagem = (
-            f"Oii {nome}, Seja bem Vindo/a Ao CED BRASIL\n\n"
-            f"📦 *Plano adquirido:* {plano_assinatura}\n\n"
+            f"Oii {nome} , Seja bem Vindo/a Ao CED BRASIL\n\n"
+            f"📦 *Plano adquirido:* {plano_assinatura} \n\n"
             "*Seu acesso:*\n"
-            f"Login: *{cpf}*\n"
+            f"Login: * {cpf} *\n"
             "Senha: *123456*\n\n"
             "🌐 *Portal do aluno:* https://ead.cedbrasilia.com.br\n"
-            "📲 *App Android:* https://play.google.com/store/apps/details?id=br.com.om.app&hl=pt_BR\n"
-            "📱 *App iOS:* https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
+            "📲 *Aplicativo Android:* https://play.google.com/store/apps/details?id=br.com.om.app&hl=pt_BR\n"
+            "📱 *Aplicativo iOS:* https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
         )
 
-        resp_whatsapp = requests.post(
-            CHATPRO_URL,
-            json={"number": numero_whatsapp, "message": mensagem},
-            headers={"Authorization": CHATPRO_TOKEN, "Content-Type": "application/json", "Accept": "application/json"},
+        resp_whatsapp = solicitações.post(
+            URL_DO_CHATPRO,
+            json={ "número" : numero_whatsapp, "mensagem" : mensagem},
+            cabeçalhos={ "Autorização" : CHATPRO_TOKEN, "Tipo de conteúdo" : "application/json" , "Aceitar" : "application/json" },
         )
-        if resp_whatsapp.status_code != 200:
-            enviar_log_discord(f"❌ Erro ao enviar WhatsApp: {resp_whatsapp.text}")
-        else:
-            enviar_log_discord("✅ Mensagem enviada com sucesso")
+        se resp_whatsapp.status_code != 200 :
+            enviar_log_discord( f"❌ Erro ao enviar WhatsApp: {resp_whatsapp.text} " )
+        outro :
+            enviar_log_discord( "✅ Mensagem enviada com sucesso" )
 
-        return {
-            "message": "Aluno cadastrado, matriculado e notificado com sucesso!",
-            "aluno_id": aluno_id,
-            "cursos": cursos_ids,
+        retornar {
+            "message" : "Aluno cadastrado, matriculado e notificado com sucesso!" ,
+            "aluno_id" : aluno_id,
+            "cursos" : cursos_ids,
         }
 
-    except Exception as e:
-        msg = f"❌ EXCEÇÃO NO PROCESSAMENTO: {e}"
+    exceto Exceção como e:
+        msg = f"❌ EXCEÇÃO NO PROCESSAMENTO: {e} "
         enviar_log_discord(msg)
-        raise HTTPException(status_code=500, detail=str(e))
+        gerar HTTPException(status_code= 500 , detail= str (e))
