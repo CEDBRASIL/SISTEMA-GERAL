@@ -2,13 +2,14 @@
 main.py
 ───────
 Ponto de entrada da API FastAPI da CED.
-
+BACKEND CED BY FurioNnzxT
 Inclui roteadores:
     • /cursos             → lista de cursos (cursos.py)
+    • /cursosom           → lista de cursos Ouro Moderno (cursosom.py)
     • /api/auth           → autenticação (secure.py)
-    • /api                → matrícula (matricular.py)
-    • /api/webhook        → webhooks (webhook.py)
-    • /cadastrar          → cadastro/matrícula OM e ChatPro (cadastrar.py)
+    • /matricular         → matrícula de alunos (matricular.py)
+    • /alunos             → gestão de alunos (alunos.py)
+    • /kiwify             → integração com Kiwify (kiwify.py)
 
 CORS aberto por padrão; ajuste a lista ORIGINS no .env se precisar restringir.
 """
@@ -25,7 +26,7 @@ import alunos
 import kiwify
 
 # ──────────────────────────────────────────────────────────
-# Instância FastAPI
+# Instância da aplicação FastAPI
 # ──────────────────────────────────────────────────────────
 app = FastAPI(
     title="API CED – Matrícula Automática",
@@ -35,8 +36,7 @@ app = FastAPI(
 )
 
 # ──────────────────────────────────────────────────────────
-# CORS – libere apenas os domínios necessários em PROD
-# Ex.: ORIGINS=https://www.cedbrasilia.com.br,https://ced-frontend.onrender.com
+# CORS – Domínios permitidos (ajustar via ORIGINS no .env)
 # ──────────────────────────────────────────────────────────
 origins = [
     origin.strip()
@@ -53,23 +53,27 @@ app.add_middleware(
 )
 
 # ──────────────────────────────────────────────────────────
-# Registrar roteadores
+# Registro dos roteadores
 # ──────────────────────────────────────────────────────────
-app.include_router(cursos.router,          prefix="/cursos",      tags=["Cursos"])
-app.include_router(cursosom.router,       prefix="/cursosom",   tags=["Cursos OM"])
-app.include_router(secure.router,          tags=["Autenticação"])
-app.include_router(matricular.router,  prefix="/matricular",  tags=["Matrícula"])
-app.include_router(alunos.router,       prefix="/alunos",     tags=["Alunos"])
-app.include_router(kiwify.router,       prefix="/kiwify",     tags=["Kiwify"])
-
-
-
-
+app.include_router(cursos.router,     prefix="/cursos",     tags=["Cursos"])
+app.include_router(cursosom.router,   prefix="/cursosom",   tags=["Cursos OM"])
+app.include_router(secure.router,                        tags=["Autenticação"])
+app.include_router(matricular.router, prefix="/matricular", tags=["Matrícula"])
+app.include_router(alunos.router,     prefix="/alunos",     tags=["Alunos"])
+app.include_router(kiwify.router,     prefix="/kiwify",     tags=["Kiwify"])
 
 # ──────────────────────────────────────────────────────────
-# Health-check simples
+# Health-check
 # ──────────────────────────────────────────────────────────
 @app.get("/", tags=["Status"])
 def health():
     """Verifica se o serviço está operacional."""
     return {"status": "online", "version": app.version}
+
+# ──────────────────────────────────────────────────────────
+# Execução local / Render
+# ──────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))  # Render define PORT dinamicamente
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
