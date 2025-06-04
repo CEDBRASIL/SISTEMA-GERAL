@@ -107,7 +107,7 @@ async def secure_check ():
     return JSONResponse(content= "❌ Falha ao atualizar token via /secure" , status_code= 500 )
 
 
-@router.post( "/webhook" )
+@router.post( "/" )
 async def webhook ( carga útil: dict ):
   
     tentar :
