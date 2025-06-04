@@ -66,6 +66,7 @@ def buscar_aluno_por_cpf(cpf: str) -> str | None:
         return None
 
 
+
 import unicodedata
 import difflib
 
@@ -99,7 +100,13 @@ def obter_cursos_ids(nome_plano: str):
         return CURSOS_OM[nomes_norm[match[0]]]
 
     return None
+=======
+def obter_cursos_ids(nome_plano: str):
+    """Busca cursos ignorando diferença de caixa."""
+    chave = next((k for k in CURSOS_OM if k.lower() == nome_plano.lower()), None)
+    return CURSOS_OM.get(chave) if chave else None
 
+  
 
 def log_request_info(request: Request) -> None:
     mensagem = (
@@ -125,8 +132,12 @@ async def secure_check():
         return "🔐 Token atualizado com sucesso via /secure"
     return JSONResponse(content="❌ Falha ao atualizar token via /secure", status_code=500)
 
-
+  
 async def _process_webhook(payload: dict):
+=======
+@router.post("/")
+async def webhook(payload: dict):
+
     try:
         evento = payload.get("webhook_event_type")
 
@@ -261,6 +272,7 @@ async def _process_webhook(payload: dict):
     except Exception as e:
         msg = f"❌ EXCEÇÃO NO PROCESSAMENTO: {e}"
         enviar_log_discord(msg)
+
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -273,3 +285,6 @@ async def webhook(payload: dict):
 async def webhook_root(payload: dict):
     """Endpoint alternativo para Kiwify que envia para /kiwify/"""
     return await _process_webhook(payload)
+=======
+        raise HTTPException(status_code=500, detail=str(e))
+
