@@ -1,0 +1,1134 @@
+{
+    "status": "true",
+    "data": [
+        {
+            "id": "35",
+            "modulo": "4",
+            "nome": "Administrativo",
+            "aulas": "7",
+            "carga": "10.5",
+            "descricao": "O curso de Administrativo visa capacitar o profissional para executar tarefas administrativas visando o alcance dos objetivos da empresa ou instituição em que está trabalhando, através de diversos conceitos administrativos e contábeis."
+        },
+        {
+            "id": "58",
+            "modulo": "12",
+            "nome": "Hotelaria e Turismo",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "O Curso de Hotelaria e Turismo  veio para apresentar e ensinar ao seu aluno desde as noções básicas até as mais diversas atividades relacionadas a este ramo, que é um dos mercados mais promissores de nosso país, e já prevendo a sua expansão próxima, tendo em vista os grandes eventos internacionais que estão agendados para os próximos anos."
+        },
+        {
+            "id": "61",
+            "modulo": "11",
+            "nome": "Word 2013",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "Nove em cada dez empresas utilizam o Word como ferramenta de trabalho. Aprenda a utilizar um dos softwares mais utilizados no mundo. Iniciando a série de cursos do Office 2013, saimos na frente novamente, com 14 aulas que mostram as principais ferramentas do software. "
+        },
+        {
+            "id": "62",
+            "modulo": "11",
+            "nome": "Excel 2013",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "Trazemos em primeira mão para você um curso especialmente desenvolvido para aqueles que desejam aprender a trabalhar com a planilha eletrônica mais utilizada em todo o mundo. Com o Excel 2013, você estará um passo à frente, dominando as inúmeras atividades que podem ser desenvolvidas com este maravilhoso software, que relaciona e integra cálculos, planilhas, gráficos e uma infinidade de recursos muito importantes para diversas atividades profissionais, e até mesmo para uso pessoal. "
+        },
+        {
+            "id": "63",
+            "modulo": "11",
+            "nome": "PowerPoint 2013",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "O PowerPoint 2013 é um programa que permite a criação e exibição de apresentações, cujo objetivo é informar sobre um determinado tema, podendo usar imagens, sons, textos e vídeos, que podem ser animados de diferentes maneiras. Nesta nova versão foram acrescentadas diversas ferramentas que tornarão seus trabalhos muito mais interativos e com impacto visual ainda melhor, sem contar as diversas funcionalidades online que foram acrescentadas ao software. "
+        },
+        {
+            "id": "69",
+            "modulo": "12",
+            "nome": "Elaboração de Currículo",
+            "aulas": "1",
+            "carga": "1.5",
+            "descricao": "Neste curso rápido e prático irá lhe mostrar como elaborar um currículo de forma eficiente e profissional, para que você possa ganhar pontos e aumentar as suas possibilidades na hora da conquista de um novo emprego. "
+        },
+        {
+            "id": "78",
+            "modulo": "7",
+            "nome": "InDesign CS6",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "Adobe InDesign é um software da Adobe Systems desenvolvido para diagramação e organização de páginas, criado para substituir o Adobe PageMaker, apresentando uma variedade de aprimoramentos, resultando em mais produtividade. O programa cria documentos em formato próprio, editável, que posteriormente pode ser exportado para PDF ou outros formatos específicos de impressão. Hoje junto com os programas Photoshop e Illustrator, também da Adobe, formam as principais ferramentas de trabalho utilizadas por agências de publicidade, editoras de jornais e revistas, indústrias de embalagens, departamentos de marketing e afins."
+        },
+        {
+            "id": "81",
+            "modulo": "12",
+            "nome": "Operador de Caixa",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "Este curso foi desenvolvido para quem pretende ingressar em uma função que está entre as mais encontradas no comércio. Ao longo de suas aulas, Você irá conhecer os requisitos essenciais da profissão, bem como suas principais características e funcionalidades, para estar um passo à frente neste concorrido mercado de trabalho. Além disso você encontrará conteúdos complementares que irão contribuir para que ele se torne um profissional mais completo e apto a progredir em sua carreira."
+        },
+        {
+            "id": "90",
+            "modulo": "11",
+            "nome": "Mídias Sociais 2016",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "Neste curso aprenda sobre este Universo, e as técnicas que levarão para uma viagem de informação e sucesso na Internet através das redes sociais. Como escrever, como aumentar o tráfego, como personalizar o twitter, como utilizar as ferramentas que os twiteiros utilizam, como criar e gerenciar um facebook. Como utilizar o Skype ou Youtube."
+        },
+        {
+            "id": "91",
+            "modulo": "7",
+            "nome": "CorelDraw X8",
+            "aulas": "20",
+            "carga": "30.0",
+            "descricao": "Combine sua criatividade com o poder sem igual do CorelDRAW Graphics Suite X8 para desenvolver gráficos e layouts, editar fotos e criar sites. Com suporte avançado para Windows 10, visualização em múltiplos monitores e telas 4K, a suíte permite que usuários iniciantes, profissionais de design gráfico, proprietários de pequenas empresas e entusiastas de design obtenham resultados profissionais com rapidez e confiança. Descubra ferramentas intuitivas de alto desempenho para criar logotipos, brochuras, gráficos para Web, anúncios para redes sociais ou qualquer projeto original. CorelDRAW do seu jeito."
+        },
+        {
+            "id": "92",
+            "modulo": "10",
+            "nome": "Windows 10 Kids",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": "Curso de Windows 10 Kids foi desenvolvido para crianças de 6 a 9 anos. As aulas foram desenvolvidas com uma linguagem prática e objetiva, com um visual mais adequado e interatividade desenvolvida para `chamar a atenção´ destes alunos."
+        },
+        {
+            "id": "93",
+            "modulo": "10",
+            "nome": "Internet Kids",
+            "aulas": "5",
+            "carga": "7.5",
+            "descricao": "Nosso curso é focado em ensinar as crianças a navegar na internet com segurança. O curso de Internet Kids foi desenvolvido para crianças de 6 a 9 anos."
+        },
+        {
+            "id": "94",
+            "modulo": "10",
+            "nome": "Word 2016 Kids",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": "O Word é um dos editores de texto mais populares do mercado há anos. Criado pela Microsoft, o Word faz parte do pacote Office e atualmente se encontra na versão 2016, com muitas funcionalidades novas e atalhos para facilitar as principais tarefas do dia-a-dia de quem precisa criar textos profissionais de forma rápida e prática."
+        },
+        {
+            "id": "99",
+            "modulo": "14",
+            "nome": "Meu Novo emprego",
+            "aulas": "3",
+            "carga": "4.5",
+            "descricao": "O Curso `Meu novo Emprego´ é uma grande novidade que trará para você dicas valiosas para a sua inserção ao mercado de trabalho. São três aulas completas que mostram o caminho para obter um emprego desejado."
+        },
+        {
+            "id": "105",
+            "modulo": "14",
+            "nome": "Word 2016",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "O Word é um dos editores de texto mais populares do mercado há anos. Criado pela Microsoft, o Word faz parte do pacote Office e atualmente se encontra na versão 2016, com muitas funcionalidades novas e atalhos para facilitar as principais tarefas do dia-a-dia de quem precisa criar textos profissionais de forma rápida e prática."
+        },
+        {
+            "id": "106",
+            "modulo": "14",
+            "nome": "Excel 2016 Avançado",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "Trazemos em primeira mão para você um curso especialmente desenvolvido para aqueles que desejam aprender a trabalhar com a planilha eletrônica mais utilizada em todo o mundo. Com o Excel 2016, você estará um passo à frente, dominando as inúmeras atividades que podem ser desenvolvidas com este maravilhoso software, que relaciona e integra cálculos, planilhas, gráficos e uma infinidade de recursos muito importantes para diversas atividades profissionais, e até mesmo para uso pessoal. "
+        },
+        {
+            "id": "123",
+            "modulo": "12",
+            "nome": "Técnicas de Vendas V2",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": "O Curso Técnicas de Vendas tem o propósito de oferecer uma preparação completa para quem já atua ou quem quer adquirir experiência na área de vendas, facilitando assim a sua colocação e crescimento neste mercado de trabalho tão carente de profissionais preparados."
+        },
+        {
+            "id": "124",
+            "modulo": "9",
+            "nome": "Desenvolvedor de Games 3D - Módulo II   v.2",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "Chegou o módulo mais esperado do curso de games. Esta disciplina trabalha com o motor do jogo e nele o aluno aprende a montar o jogo, testar além de criar ambientes, função e eventos. O motor tem tecnologias gráficas muito avançadas, física e animação, bem como melhorias de jogabilidade. "
+        },
+        {
+            "id": "126",
+            "modulo": "3",
+            "nome": "HTML e CSS",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "Aprenda a desenvolver um site utilizando os recursos do HTML 4 e HTML 5 e do CSS2 e CSS3, que são os mais modernos no mercado. Também saberá tudo o que é preciso para que o site seja responsivo, ou seja, que funcione tanto no computador quanto nos dispositivos móveis."
+        },
+        {
+            "id": "127",
+            "modulo": "14",
+            "nome": "Power Point 2016",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "O PowerPoint é um programa que permite a criação e exibição de apresentações, cujo objetivo é informar sobre um determinado tema, podendo usar imagens, sons, textos e vídeos, que podem ser animados de diferentes maneiras. Neste curso você aprende diversas ferramentas. Indispensável na apresentação de Trabalhos e produtos. "
+        },
+        {
+            "id": "129",
+            "modulo": "4",
+            "nome": "Administrativo Informatizado v.3",
+            "aulas": "25",
+            "carga": "37.5",
+            "descricao": "O curso de Administrativo Informatizado visa capacitar o profissional para executar tarefas administrativas visando o alcance dos objetivos da empresa ou instituição em que está trabalhando, através de diversos conceitos administrativos e contábeis, além de treinar o aluno para as principais atividades e funções relacionados ao uso dos microcomputadores. "
+        },
+        {
+            "id": "130",
+            "modulo": "1",
+            "nome": "Introdução à Informática v.2",
+            "aulas": "5",
+            "carga": "7.5",
+            "descricao": "O Curso de Introdução á Informática foi desenvolvido para atender os alunos que não tiveram contato com o computador. Funções do mouse, teclado e orientações gerais são trabalhadas de uma maneira de fácil compreensão e leitura."
+        },
+        {
+            "id": "131",
+            "modulo": "14",
+            "nome": "Excel 2016",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "Trazemos em primeira mão para você um curso especialmente desenvolvido para aqueles que desejam aprender a trabalhar com a planilha eletrônica mais utilizada em todo o mundo. Com o Excel 2016, você estará um passo à frente, dominando as inúmeras atividades que podem ser desenvolvidas com este maravilhoso software, que relaciona e integra cálculos, planilhas, gráficos e uma infinidade de recursos muito importantes para diversas atividades profissionais, e até mesmo para uso pessoal. "
+        },
+        {
+            "id": "135",
+            "modulo": "2",
+            "nome": "Sketchup",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": "A desenhar e montar projetos em 3D de uma forma prática e interativa, para poder explorar as principais funções deste aplicativo. Conhecerá a interface do usuário, as ferramentas disponíveis para criação, edição e transformação de objetos, bem como os conceitos de formas e superfícies de um desenho."
+        },
+        {
+            "id": "136",
+            "modulo": "12",
+            "nome": "Youtuber",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": "Você dará os primeiros passos em um mercado muito interessante e conhecerá a diversidade de públicos que consomem vídeos no Youtube. Ao longo do curso aprenderá a desenvolver um canal e como configurá-lo para obter mais sucesso no nicho escolhido e, também, assimilará conceitos de qualidade de áudio e vídeo para tornar seu produto mais profissional."
+        },
+        {
+            "id": "138",
+            "modulo": "14",
+            "nome": "Adobe Premiere Pro CC",
+            "aulas": "18",
+            "carga": "27.0",
+            "descricao": "O curso tem o objetivo de dar conhecimento ao aluno sobre um dos maiores editores de vídeos da atualidade. Fazendo edições de vídeo e áudio básicas à avançadas, onde ele utilizara o computador como ferramenta profissional. Aprenderá também algumas dicas para gravar seus próprios vídeos, tornando-se assim um grande editor de vídeos."
+        },
+        {
+            "id": "139",
+            "modulo": "9",
+            "nome": "Desenvolvedor de Games 3D - Módulo I v.2 ",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "O curso de Desenvolvedor de Jogos em 3D promete realizar o sonho de muitos alunos que desejam entrar no ramo de desenvolvimento de games, apresentando técnicas de modelagem, criação de texturas, desenvolvimento de mapas, criação de roteiros e storyboards, além de criação de magníficas trilhas sonoras."
+        },
+        {
+            "id": "144",
+            "modulo": "4",
+            "nome": "Empreendedorismo",
+            "aulas": "4",
+            "carga": "6.0",
+            "descricao": "O que você aprenderá com esse curso?\r\nOs Conceitos Básicos de Empreendedorismo, desde as características fundamentais de um empreendedor, entendendo suas metas e habilidades necessárias, até conceitos de Estrutura e Planos de Negócios, com orientações e dicas de como perseverar conduzindo suas ideias e projetos."
+        },
+        {
+            "id": "146",
+            "modulo": "9",
+            "nome": "Desenvolvedor de Games 3D - Módulo III v.2 ",
+            "aulas": "9",
+            "carga": "13.5",
+            "descricao": "O Curso Desenvolvedor de Games 3D – Módulo III V.2 vem para complementar o conteúdo que vinha sendo exposto nos dois módulos anteriores. Nele, o aluno irá se familiarizar com o uso e aplicação do software FL Studio, ideal para criação de músicas e sons diversos, que são essenciais para tornar um jogo mais vivo, atraente e realista."
+        },
+        {
+            "id": "148",
+            "modulo": "12",
+            "nome": "Vitrinismo",
+            "aulas": "4",
+            "carga": "6.0",
+            "descricao": "O curso de Vitrinismo prepara para o processo de criação de espaços temáticos com a finalidade de dialogar com os diferentes perfis de consumidores, de modo a agregar valor ao produto e de acordo com a estratégia de exposição, distribuição e apresentação de uma boa vitrine."
+        },
+        {
+            "id": "153",
+            "modulo": "13",
+            "nome": "Desenvolvedor de Aplicativos Android v.2",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "Este é um curso onde o aluno irá trabalhar no desenvolvimento de aplicativos para dispositivos móveis, utilizando o sistema operacional Android e a linguagem Java, como também aprender a projetar o layout do aplicativo e como funciona a estrutura de um projeto. Além disso, iremos desenvolver alguns exemplos no decorrer das aulas, sendo criado um cadastro de clientes como projeto principal. Nesse projeto, estaremos criando algumas rotinas. Entre elas, utilizaremos o banco de dados para armazenar as informações do cadastro e, posteriormente, exibir uma lista dos clientes cadastrados e poder atualizar e excluir dados."
+        },
+        {
+            "id": "154",
+            "modulo": "4",
+            "nome": "Liderança Eficaz",
+            "aulas": "5",
+            "carga": "7.5",
+            "descricao": "O curso de Liderança Eficaz tem como objetivo mostrar que através da liderança as empresas realizam seus projetos, expandem seus negócios e conquistam clientes."
+        },
+        {
+            "id": "155",
+            "modulo": "12",
+            "nome": "Atendente de Farmácia v.2",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": "O curso de Atendente de Farmácia irá apresentar a você as principais funções e características de uma profissão extremamente importante e muito presente em nossa sociedade. Ao longo de 10 aulas levaremos você por uma jornada fascinante, onde você aprenderá noções fundamentais para a prática desta profissão, que é uma das mais procuradas no mercado, em praticamente todas as cidades. Você aprenderá como atender seus clientes, como reagir diante de cada situação e aprenderá a administrar alguns tipos de medicamentos, ministrar primeiros socorros e muito mais."
+        },
+        {
+            "id": "156",
+            "modulo": "4",
+            "nome": "Gestão de RH v.2",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "O Curso de Recursos Humanos tem por objetivo capacitar o aluno a identificar, por meio de métodos, técnicas e práticas modernas, a importância das pessoas no contexto de uma organização, tornando-o competente para atuar nos diversos subsistemas que integram a área de Recursos Humanos das empresas."
+        },
+        {
+            "id": "159",
+            "modulo": "10",
+            "nome": "Robótica",
+            "aulas": "20",
+            "carga": "30.0",
+            "descricao": "O curso de Robótica conta com 20 aulas, contemplando conceitos básicos de elétrica e eletrônica. Como plataforma base, o curso utiliza o Arduino, amplamente utilizado em diversos projetos pelo mundo. Vale lembrar que essa placa conta com diversos recursos a um preço acessível. Além disso, durante o curso, o aluno irá aprender sobre a teoria da robótica, mas sempre com projetos práticos que irão deixá-lo preparado para entrar neste universo incrível e facilmente encontrado no nosso dia a dia, além da maioria das aulas contarem com exercícios práticos. E ainda, no final do curso, ele faz um projeto, um carrinho robótico."
+        },
+        {
+            "id": "160",
+            "modulo": "14",
+            "nome": "Word 2019",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "Nove em cada dez empresas utilizam o Word como ferramenta de trabalho. Aprenda a utilizar um dos softwares mais utilizados no mundo, que conta com novidades nesta nova versão. Iniciando a série de cursos do Office 2019, o Word 2019 possui 14 aulas que mostram as principais ferramentas do software."
+        },
+        {
+            "id": "161",
+            "modulo": "14",
+            "nome": "Excel 2019",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": " Com o Excel 2019, você estará um passo à frente, dominando as inúmeras atividades que podem ser desenvolvidas com este maravilhoso software, que relaciona e integra cálculos, planilhas, gráficos e uma infinidade de recursos muito importantes para diversas atividades profissionais, e até mesmo para uso pessoal."
+        },
+        {
+            "id": "162",
+            "modulo": "14",
+            "nome": "Power Point 2019",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "Este curso apresentará a você a versão 2019 do editor de apresentações mais utilizado no mundo: o Power Point. Suas ferramentas permitem que você crie e exiba apresentações que utilizem imagens, sons, textos e vídeos, que podem ser animadas de diferentes maneiras. Assim, fará com que seus trabalhos, acadêmicos ou pessoais, sejam muito mais interativos e com grande impacto visual. Tudo isso é possível porque você contará com diversas funcionalidades online que foram acrescentadas ao software."
+        },
+        {
+            "id": "163",
+            "modulo": "14",
+            "nome": "Windows 10 v.2",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": "O Windows 10 é um dos sistemas operacionais mais utilizados no mundo. Conhecimento sobre suas diversas funções é praticamente um requisito para aqueles que querem aprender a utilizar computadores e entrar no mercado de trabalho."
+        },
+        {
+            "id": "167",
+            "modulo": "9",
+            "nome": "Desenvolvedor de Games Kids",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": ""
+        },
+        {
+            "id": "168",
+            "modulo": "10",
+            "nome": "Melhor Idade v.2",
+            "aulas": "15",
+            "carga": "22.5",
+            "descricao": ""
+        },
+        {
+            "id": "169",
+            "modulo": "7",
+            "nome": "Adobe Photoshop CC",
+            "aulas": "20",
+            "carga": "30.0",
+            "descricao": ""
+        },
+        {
+            "id": "176",
+            "modulo": "13",
+            "nome": "Java Básico",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "Este curso tem como objetivo preparar o aluno que deseja entrar no ramo da programação, preparando para que você conheça as ferramentas deste programa, que hoje é muito solicitada pelo mercado de trabalho. Sendo assim uma linguagem de programação orientada a objetos."
+        },
+        {
+            "id": "182",
+            "modulo": "14",
+            "nome": "Internet - Versão 4",
+            "aulas": "11",
+            "carga": "16.5",
+            "descricao": "O curso tem como finalidade desmistificar o uso da internet diante do avanço tecnológico e, como o mercado de trabalho exige cada vez mais competitividade, o uso dela é indispensável atualmente.\r\nO curso foi elaborado para facilitar o seu aprendizado, transmitir um conteúdo interativo e dinâmico, com exercícios passo a passo e de fixação. "
+        },
+        {
+            "id": "183",
+            "modulo": "12",
+            "nome": "Matemática Financeira com HP12C",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "Desde as operações mais simples até cálculos com juros simples e compostos, taxas de financiamento e desconto, o curso aborda formas de lidar com diversas situações encontradas no dia-a-dia, tanto para quem precisa entender melhor as operações financeiras quanto para quem deseja ingressar em atividades que demandam esse conhecimento prévio."
+        },
+        {
+            "id": "192",
+            "modulo": "11",
+            "nome": "Midias Sociais - Versão 3",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": ""
+        },
+        {
+            "id": "193",
+            "modulo": "2",
+            "nome": "AutoCad 2D 2020",
+            "aulas": "22",
+            "carga": "33.0",
+            "descricao": "O AutoCAD 2D 2020 é uma ferramenta que permite repassar um desenho à mão para o computador, é um dos mais conceituados e populares programas para o desenvolvimento de projetos em vista 2D ou 3D."
+        },
+        {
+            "id": "195",
+            "modulo": "2",
+            "nome": "3Ds Max 2020",
+            "aulas": "20",
+            "carga": "30.0",
+            "descricao": "O 3Ds Max é um programa de computação gráfica para animação 3D, modelagem 3D e maquete eletrônica. É o mais popular, utilizado nas animações 3D de personagens e desenho animado."
+        },
+        {
+            "id": "196",
+            "modulo": "14",
+            "nome": "Segurança Digital",
+            "aulas": "6",
+            "carga": "9.0",
+            "descricao": "Cada vez mais estamos dependentes da Internet para efetuarmos nossos compromissos do dia-a-dia.\r\nAlém disso, ela é uma fonte quase infinita de informações. Mas, como filtrar isso?\r\nComo permanecer seguro em um mundo digital onde todos os nossos dados pessoais ficam salvos em bancos de dados?\r\nComo manter seu dispositivo limpo de vírus e se livrar dos diversos golpes aplicados na grande rede?\r\nNeste curso, você terá um guia de sobrevivência da internet."
+        },
+        {
+            "id": "197",
+            "modulo": "14",
+            "nome": "Excel 2019 Avançado",
+            "aulas": "13",
+            "carga": "19.5",
+            "descricao": "Um curso especialmente desenvolvido para aqueles que desejam aprimorar o seu conhecimento sobre a planilha eletrônica mais utilizada em todo o mundo. Com o Excel 2019 avançado, você estará um passo à frente, dominando as inúmeras atividades que podem ser desenvolvidas com este maravilhoso software, que relaciona e integra cálculos, planilhas, gráficos e uma infinidade de recursos muito importantes para diversas atividades profissionais, e até mesmo para uso pessoal. "
+        },
+        {
+            "id": "198",
+            "modulo": "4",
+            "nome": "Departamento Pessoal - Versão 3",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": ""
+        },
+        {
+            "id": "199",
+            "modulo": "14",
+            "nome": "Marketing Digital",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": ""
+        },
+        {
+            "id": "200",
+            "modulo": "4",
+            "nome": "Assistente Contábil - Versão 2",
+            "aulas": "22",
+            "carga": "33.0",
+            "descricao": "Assistente Contábil é o profissional responsável por controlar e executar trabalhos relacionados à área Contábil. Ele classifica despesas, analisa e reconcilia contas, registra documentos e escritura livros fiscais. Neste curso você aprenderá a desempenhar tais tarefas, bem como suas normas e leis. O que aprender com este curso? Com este curso você aprenderá sobre leis, sociedades, processos, cálculos e registros. Tudo o que você precisa saber para desempenhar bem a função de Assistente Contábil."
+        },
+        {
+            "id": "201",
+            "modulo": "14",
+            "nome": "Excel 2019 Dashboard",
+            "aulas": "5",
+            "carga": "7.5",
+            "descricao": ""
+        },
+        {
+            "id": "202",
+            "modulo": "14",
+            "nome": "Facebook Business",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "O Marketing Digital é uma realidade e seu poder de persuasão e baixo custo estão dominando este mercado.Existem diversas ferramentas que auxiliam e reproduzem o Marketing Digital, ferramentas que as próprias redes sociais disponibilizam ou até vindas de terceiros.\r\nMas, a mais conhecida delas e uma das mais poderosas é o Facebook Business. Aprender a ferramenta é tão importante quanto o Marketing que você faz.Com este curso você aprenderá a utilizar esta poderosa ferramenta chamada Facebook Business. Capaz de criar campanhas, organizar horários de veiculação de anúncios, gerar alcance para suas publicações e muito mais que você descobrirá."
+        },
+        {
+            "id": "203",
+            "modulo": "13",
+            "nome": "Lógica de Programação - Versão 2",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "A lógica de programação é uma linguagem usada para criar um programa de computador. A lógica de programação é essencial para desenvolver programas e sistemas informáticos, pois ela define o encadeamento lógico para esse desenvolvimento."
+        },
+        {
+            "id": "207",
+            "modulo": "12",
+            "nome": "Telemarketing - Versão 2",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "O Curso de Telemarketing da Ouro Moderno tem o propósito de introduzir e preparar o profissional de Telemarketing a desempenhar uma função que está entre as mais procuradas no mercado.  Estima-se que 50% dos operadores de Telemarketing não receberam formação adequada. "
+        },
+        {
+            "id": "214",
+            "modulo": "4",
+            "nome": "Gestão Administrativa - Versão 2",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "O curso de Gestão Administrativa foi desenvolvido com o intuito de capacitar empreendedores que desejam gerir seu próprio negócio ou que pretendam trabalhar nesta área, para que possam se familiarizar e entender como funciona toda a estrutura de administração de uma empresa, através de conceitos gerenciais e operacionais empregados nesta função."
+        },
+        {
+            "id": "216",
+            "modulo": "10",
+            "nome": "Guia de Prevenção - Covid-19",
+            "aulas": "2",
+            "carga": "3.0",
+            "descricao": "Este curso foi elaborado com o intuito de trazer as principais informações a respeito da maior pandemia que enfrentamos nos últimos 100 anos e fazer com que você  sinta-se seguro para lidar com este período com tranquilidade e segurança."
+        },
+        {
+            "id": "217",
+            "modulo": "14",
+            "nome": "Aplicativos de Chamada",
+            "aulas": "4",
+            "carga": "6.0",
+            "descricao": "Neste curso você aprenderá a utilizar os principais aplicativos para reuniões online. Aprenderá a configurar vídeo e áudio, agendar reuniões, criar demonstração de tela e muito mais! Os aplicativos como Zoom Meeting e Google Meet nunca foram tão necessários em nossa vida."
+        },
+        {
+            "id": "218",
+            "modulo": "14",
+            "nome": "Multimídia - Versão 3",
+            "aulas": "5",
+            "carga": "7.5",
+            "descricao": "O curso tem como foco os aplicativos mais utilizados atualmente, começando com o Youtube, depois Netflix, segue com o Amazon Prime e encerramos com o Spotify."
+        },
+        {
+            "id": "220",
+            "modulo": "14",
+            "nome": "Aplicativos de Acesso Remoto",
+            "aulas": "2",
+            "carga": "3.0",
+            "descricao": "Nesses períodos onde conexões à distância são muito importantes, muitas vezes você não poderá ter um técnico em sua casa acessando seu computador para efetuar ajustes, ou você não poderá ir até a casa de algum cliente. Em alguns momentos, você até mesmo precisará acessar outro dispositivo distante, enquanto em Home Office. Para isso, existem alguns aplicativos ótimos que permitem o Acesso Remoto."
+        },
+        {
+            "id": "221",
+            "modulo": "14",
+            "nome": "Armazenamento em Nuvem",
+            "aulas": "4",
+            "carga": "6.0",
+            "descricao": "A tecnologia evolui exponencialmente e, muitas vezes, fica difícil para nós acompanharmos tudo o que surge de novidade. Há anos uma tecnologia revolucionária foi inventada, tratava-se do armazenamento em nuvem. Pouco se sabia sobre as vantagens do uso desta até alguns anos atrás, quando começamos a utilizá-la sem nem mesmo perceber. Hoje em dia, a tecnologia de armazenamento em nuvem, que permite salvarmos e acessarmos arquivos em servidores online já faz parte de nossas vidas e aprender a utilizar suas ferramentas é essencial."
+        },
+        {
+            "id": "222",
+            "modulo": "10",
+            "nome": "Técnicas de Memorização",
+            "aulas": "2",
+            "carga": "3.0",
+            "descricao": "O curso apresenta diversas Técnicas de Memorização, mostrando os conceitos mais utilizados para que ele possa desenvolver melhor seu processo de aprendizado de diversos tipos de conteúdos, de forma simples e eficaz, com o objetivo de ter mais sucesso em sua carreira acadêmica, assim como no crescimento pessoal."
+        },
+        {
+            "id": "234",
+            "modulo": "14",
+            "nome": "Documentos Google",
+            "aulas": "2",
+            "carga": "3.0",
+            "descricao": "Neste curso você aprenderá a compartilhar arquivos via Documentos Google e a trabalhar com arquivos compartilhados. Aprenderá as ferramentas básicas de edição dos três principais aplicativos de documentos compartilhados da Google: Google Documentos, Google Planilhas e Google Apresentações."
+        },
+        {
+            "id": "235",
+            "modulo": "10",
+            "nome": "Síndico de Condomínio",
+            "aulas": "2",
+            "carga": "3.0",
+            "descricao": "Nesse curso você irá aprender sobre a função de Síndico, como, quando e onde ele deve atuar. Seus requisitos, suas tarefas, responsabilidades e deveres. Também conhecerá a Legislação relacionada a função bem como os documentos que são utilizados para regulamentar todo o processo de gerir um condomínio."
+        },
+        {
+            "id": "236",
+            "modulo": "10",
+            "nome": "Marketing Pessoal",
+            "aulas": "2",
+            "carga": "3.0",
+            "descricao": "O curso trabalha os principais conceitos associados ao Marketing Pessoal para aquelas pessoas que sintam necessidade de se desenvolverem em vários aspectos que possam aprimorar seu auto-conhecimento e consigam se destacar no meio em que vivem ou que pretendem ingressar"
+        },
+        {
+            "id": "237",
+            "modulo": "3",
+            "nome": "Domínio",
+            "aulas": "2",
+            "carga": "3.0",
+            "descricao": "Domínios são nomes dados a sites, para que possamos acessá-los de forma mais simples e fácil. Com os apontamentos certos e configurações de DNS podemos utilizar nosso domínio para conduzir o usuário em diversas partes de nosso site. Aprender sobre como os domínios funcionam e como criá-los é um passo importante para ter seu próprio site hospedado na web."
+        },
+        {
+            "id": "238",
+            "modulo": "14",
+            "nome": "Manutenção de Computadores - Versão 2",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "O curso de Manutenção de computadores aborda desde a forma de funcionamento de um computador, à descrição de cada componente. Sabendo a teoria e agregando a prática, você aprenderá a montar e desmontar computadores dos mais variados tipos."
+        },
+        {
+            "id": "239",
+            "modulo": "14",
+            "nome": "Programação PHP - Versão 2",
+            "aulas": "20",
+            "carga": "30.0",
+            "descricao": "A linguagem de programação em PHP, criada por Rasmus Lerdorf em 1994, foi projetada apenas para alguns scripts de monitoramento, mas hoje em meio ao crescimento e popularidade da linguagem, ela vem se tornando um dos principais meios de programação web. Tendo uma arquitetura simples e intuitiva, o PHP é uma ferramenta vital para o Desenvolvedor Web que possui sede de conhecimento e um desejo de se destacar no mercado de trabalho."
+        },
+        {
+            "id": "240",
+            "modulo": "14",
+            "nome": "Adobe After Effects CC",
+            "aulas": "14",
+            "carga": "21.0",
+            "descricao": "O Adobe After Effects é um programa de criação e edição gráfica de vídeos, com movimentos e efeitos visuais. Ele é extensamente utilizado em pós-produções de vídeo, bem como na criação de introduções, efeitos de logo,\r\nefeitos visuais para plataformas de redes sociais e Youtube, etc."
+        },
+        {
+            "id": "243",
+            "modulo": "14",
+            "nome": "Normas da ABNT para Trabalhos Acadêmicos - Versão 2",
+            "aulas": "2",
+            "carga": "3.0",
+            "descricao": "O curso apresenta toda a estrutura de elementos que são utilizados para produzir textos acadêmicos de acordo com as normas da ABNT - Associação Brasileira das Normas Técnicas, levando ao conhecimento do aluno as características de cada um destes elementos e os requisitos para utilizá-los."
+        },
+        {
+            "id": "251",
+            "modulo": "14",
+            "nome": "Agente de Portaria",
+            "aulas": "3",
+            "carga": "4.5",
+            "descricao": "O curso foi desenvolvido no intuito de apresentar as principais características da função, suas atribuições e funções, bem como orientar o aluno sobre as dicas e principais cuidados pertinentes ao cargo."
+        },
+        {
+            "id": "252",
+            "modulo": "3",
+            "nome": "WordPress",
+            "aulas": "17",
+            "carga": "25.5",
+            "descricao": "O curso de WordPress foi desenvolvido para aprimorar a criação de sites. O aluno que já concluiu os cursos de Web Designer, Lógica de programação e PHP, através do WordPress vai ter condições de produzir sites com mais qualidade, com ferramentas que estão em constante atualização. Ao concluir o curso, você será um profissional apto a trabalhar na plataforma mais utilizada no mercado de desenvolvimento de sites."
+        },
+        {
+            "id": "253",
+            "modulo": "14",
+            "nome": "Power BI Desktop",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": "No curso de Power BI, você aprenderá a criar diversos tipos de gráficos e formas de mostrar e organizar dados vindos de diversas fontes. Além disso, treinaremos em quatro projetos todas as ferramentas aprendidas durante o curso, para fixar de forma simples e clara as principais funções deste aplicativo."
+        },
+        {
+            "id": "254",
+            "modulo": "7",
+            "nome": "Adobe Illustrator CC",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "O Adobe Illustrator é um software de design baseado em vetor. Dessa forma, suas imagens podem tanto ser reduzidas para telas de dispositivos móveis, como ampliadas para preencherem um outdoor sem perder em qualidade e visual. Amplamente utilizado para criação de desenhos, tipografias, ou ilustrações em geral, o Adobe Illustrator é considerado uma das melhores ferramentas de Design no mercado."
+        },
+        {
+            "id": "255",
+            "modulo": "4",
+            "nome": "Crédito, Cobrança e Atendimento",
+            "aulas": "6",
+            "carga": "9.0",
+            "descricao": "Este curso foi desenvolvido com o propósito de ingressar o aluno no setor de análise de crédito e cobranças, no mercado financeiro, ensinando os conceitos, técnicas e procedimentos habituais do profissional deste setor."
+        },
+        {
+            "id": "263",
+            "modulo": "15",
+            "nome": "Inglês Básico",
+            "aulas": "40",
+            "carga": "60.0",
+            "descricao": "Hoje em dia sabemos que o Inglês é um dos idiomas necessários para ingressar no mercado de trabalho, pois  é a língua internacional que abrirá várias portas futuramente, e este curso irá guiá-lo por essa longa jornada. \r\nVeremos neste curso as principais estruturas gramaticais básicas do inglês para você aprender a começar a se comunicar."
+        },
+        {
+            "id": "264",
+            "modulo": "10",
+            "nome": "Whatsapp Business",
+            "aulas": "4",
+            "carga": "6.0",
+            "descricao": "Neste curso você aprenderá a utilizar o WhatsApp Business. Esta ferramenta permite que você converse com seus clientes através do aplicativo de bate-papo mais usado no mundo. Além da comunicação, você também aprenderá a utilizar este aplicativo para reforçar seu marketing com catálogos de produtos, enviar ou receber pagamentos via WhatsApp, organizar seu negócio com etiquetas e cadastrar mensagens automáticas."
+        },
+        {
+            "id": "265",
+            "modulo": "12",
+            "nome": "Logística",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "O curso tem como objetivo preparar o aluno para entender os processos operacionais de logística, como o planejamento das atividades de uma empresa, os conceitos sobre o controle de suprimentos, armazenagem e distribuição, os custos operacionais sem perdas de qualidade, são diversos assuntos a serem estudados, lembre-se: coloque em prática para ver resultados significativos."
+        },
+        {
+            "id": "266",
+            "modulo": "15",
+            "nome": "Inglês Kids",
+            "aulas": "24",
+            "carga": "36.0",
+            "descricao": "O curso de Inglês Kids da Ouro Moderno traz os conteúdos iniciais de uma forma mais lúdica e simples, para a fácil absorção pelas crianças.  O curso contém o método de ensino dinâmico nas 3 áreas da linguagem, sendo elas a fala, a escuta e a escrita da mesma maneira que os outros módulos da Ouro Moderno.\r\n\r\n\r\n\r\n"
+        },
+        {
+            "id": "268",
+            "modulo": "15",
+            "nome": "Inglês para Hotelaria e Turismo",
+            "aulas": "42",
+            "carga": "63.0",
+            "descricao": "Bem-vindo ao nosso curso de inglês especializado em Hotelaria e Turismo! Este curso foi projetado para atender às necessidades dos profissionais que desejam aprimorar suas habilidades linguísticas e comunicação em um dos setores mais importantes e globalizados do mundo."
+        },
+        {
+            "id": "270",
+            "modulo": "15",
+            "nome": "Inglês para Viagens",
+            "aulas": "41",
+            "carga": "61.5",
+            "descricao": "Bem-vindo ao nosso Curso de Inglês para Viagens! Este curso foi especialmente projetado para ajudá-lo a se comunicar eficazmente durante suas aventuras ao redor do mundo. Viajar para um país estrangeiro pode ser emocionante e enriquecedor, mas a barreira da língua pode ser um desafio. Com as habilidades linguísticas certas, você será capaz de interagir com pessoas locais, fazer compras, pedir informações, fazer reservas e aproveitar ao máximo cada experiência durante suas viagens."
+        },
+        {
+            "id": "271",
+            "modulo": "12",
+            "nome": "Biossegurança",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": "Biossegurança é uma área que ensina técnicas e normas de segurança para profissionais de saúde. Ela serve para prevenção e minimização, ou até mesmo eliminação de riscos inerentes às atividades de pesquisa e trabalho envolvendo agentes biológicos."
+        },
+        {
+            "id": "276",
+            "modulo": "12",
+            "nome": "Cuidador de Idosos",
+            "aulas": "10",
+            "carga": "15.0",
+            "descricao": "O curso tem como objetivo capacitar as pessoas interessadas em cuidar dos idosos, pois é necessário oferecer cuidados, amor e qualidade de vida para essas pessoas que vivem uma etapa da vida que exige muita atenção, conhecimento e muita técnica."
+        },
+        {
+            "id": "278",
+            "modulo": "14",
+            "nome": "Windows 11",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "O Windows é um dos sistemas operacionais mais utilizados no mundo. O Windows 11 vem com diversas novidades. Conhecimento sobre suas diversas funções é praticamente um requisito para aqueles que querem aprender a utilizar computadores e entrar no mercado de trabalho."
+        },
+        {
+            "id": "280",
+            "modulo": "15",
+            "nome": "Ingl&ecirc;s Intermedi&aacute;rio ",
+            "aulas": "20",
+            "carga": "30.0",
+            "descricao": "Hoje em dia sabemos que o Inglês é um dos idiomas necessários para ingressar no mercado de trabalho, pois  é a língua internacional que abrirá várias portas futuramente, e este curso irá guiá-lo por essa longa jornada. "
+        },
+        {
+            "id": "281",
+            "modulo": "15",
+            "nome": "Inglês Avançado",
+            "aulas": "20",
+            "carga": "30.0",
+            "descricao": "Hoje em dia sabemos que o Inglês é um dos idiomas necessários para ingressar no mercado de trabalho, pois  é a língua internacional que abrirá várias portas futuramente, e este curso irá guiá-lo por essa longa jornada. \r\nVeremos neste curso as estruturas gramaticais avançadas do inglês para você ter uma comunicação mais ampla."
+        },
+        {
+            "id": "284",
+            "modulo": "15",
+            "nome": "Ingl&ecirc;s para Neg&oacute;cios",
+            "aulas": "40",
+            "carga": "60.0",
+            "descricao": "O curso de Ingl&ecirc;s para Neg&oacute;cios apresenta os conhecimentos de Ingl&ecirc;s de &acirc;mbito b&aacute;sico e intermedi&aacute;rio voltados para o ramo dos neg&oacute;cios, contendo pr&aacute;ticas de reuni&otilde;es, telefonemas e outras situa&ccedil;&otilde;es do mundo corporativo."
+        },
+        {
+            "id": "307",
+            "modulo": "12",
+            "nome": "Google Education Básico",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "O curso Google Education Básico tem como objetivo capacitá-lo para unir o aprendizado presencial com o virtual, utilizando ferramentas gratuitas do Google como o Sala de Aula, o Canva, o Google Arts & Culture, o Earth, My Maps, Docs, Tradutor e Notícias."
+        },
+        {
+            "id": "316",
+            "modulo": "12",
+            "nome": "NR 20 Básico - Líquidos Combustíveis e inflamáveis",
+            "aulas": "6",
+            "carga": "9.0",
+            "descricao": "Esta Norma Regulamentadora - NR estabelece requisitos mínimos para a gestão da segurança e saúde no trabalho contra os fatores de risco de acidentes provenientes das atividades de extração, produção, armazenamento, transferência, manuseio e manipulação de inflamáveis e líquidos combustíveis."
+        },
+        {
+            "id": "317",
+            "modulo": "12",
+            "nome": "Google for Education Avançado",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "O curso Google Education Avançado tem como objetivo ajudá-lo a explorar recursos de uma maneira inovadora, que permitem que professores e alunos aprendam juntos com as ferramentas gratuitas e seguras do Google."
+        },
+        {
+            "id": "334",
+            "modulo": "12",
+            "nome": "NR 35 - Trabalho em altura",
+            "aulas": "6",
+            "carga": "9.0",
+            "descricao": "Esta Norma Regulamentadora - NR estabelece os requisitos mínimos e as medidas de proteção para o trabalho em altura, envolvendo o planejamento, a organização e a execução, de forma a garantir a segurança e a saúde dos trabalhadores envolvidos direta ou indiretamente com esta atividade."
+        },
+        {
+            "id": "355",
+            "modulo": "12",
+            "nome": "Atendente de Posto de Gasolina",
+            "aulas": "4",
+            "carga": "6.0",
+            "descricao": "Este curso tem por objetivo capacitar profissionais na área de postos de gasolina para que estejam preparados para desempenhar esta importante função da melhor maneira possível, conhecendo as atividades e rotinas deste ramo, como também o aperfeiçoamento na qualidade do atendimento ao cliente."
+        },
+        {
+            "id": "360",
+            "modulo": "12",
+            "nome": "NR 10 Básico",
+            "aulas": "27",
+            "carga": "40.5",
+            "descricao": "Esta norma regulamentadora abrange todas as fases da transformação de energia elétrica e todos os trabalhos realizados com eletricidade ou em suas proximidades: geração, transmissão, distribuição e consumo, incluindo as etapas de projeto, construção, montagem, operação, manutenção das instalações elétricas, e quaisquer trabalhos realizados nas suas proximidades."
+        },
+        {
+            "id": "396",
+            "modulo": "2",
+            "nome": "AutoCad 3D 2022 ",
+            "aulas": "18",
+            "carga": "27.0",
+            "descricao": "Versão 3D - AutoCAD é um software do tipo CAD — computer aided design (projeto com ajuda de computador) - criado e comercializado pela Autodesk. É utilizado principalmente para a elaboração de peças de desenho técnico em duas dimensões (2D) e para criação de modelos tridimensionais (3D). Além dos desenhos técnicos, o software disponibiliza vários recursos para visualização em diversos formatos. É amplamente utilizado em arquitetura, design de interiores, engenharia mecânica, engenharia geográfica e em vários outros ramos da indústria."
+        },
+        {
+            "id": "426",
+            "modulo": "12",
+            "nome": "NR 33 - Trabalho em Espaço Confinado (Reciclagem)",
+            "aulas": "11",
+            "carga": "16.5",
+            "descricao": "A NR-33 é uma norma para trabalhos confinados, que estabelece medidas de prevenção, medidas administrativas, medidas pessoais, capacitação e medidas para situações de emergências, sendo a primeira norma regulamentadora a prever a realização de avaliação dos fatores de riscos psicossociais na sua redação."
+        },
+        {
+            "id": "441",
+            "modulo": "12",
+            "nome": "Canva",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "O Canva é uma plataforma de design gráfico que permite aos usuários criarem gráficos de mídias sociais, apresentações, infográficos entre outros conteúdos visuais, de forma prática e eficaz para alavancar o Marketing Digital de seu negócio."
+        },
+        {
+            "id": "473",
+            "modulo": "9",
+            "nome": "Desenvolvedor de Games Online V2",
+            "aulas": "20",
+            "carga": "30.0",
+            "descricao": "Já imaginou criar seu próprio jogo e disponibilizá-lo para milhares de jogadores em todo o mundo e ainda criar cenários inteiros e histórias fascinantes para as pessoas jogarem? Seus alunos irão adorar! E agora, você pode proporcionar isso a eles!"
+        },
+        {
+            "id": "513",
+            "modulo": "14",
+            "nome": "Windows 11 Kids",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "O Windows 11 é a última versão da família de sistemas operacionais NT da Microsoft. Criado, inicialmente, para facilitar a vida das pessoas o Windows hoje é um sistema operacional indispensável para qualquer um que queira aprender a usar computadores."
+        },
+        {
+            "id": "541",
+            "modulo": "2",
+            "nome": "Revit",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "O curso aborda os fundamentos essenciais para utilização do software de modelagem e documentação de projetos voltados para o mercado AEC (Arquitetura, engenharia e construção) Revit."
+        },
+        {
+            "id": "560",
+            "modulo": "14",
+            "nome": "Excel Fundamental",
+            "aulas": "18",
+            "carga": "27.0",
+            "descricao": "O curso fundamental de Excel tem como objetivo fornecer aos alunos uma base sólida nas habilidades essenciais para utilizar o Microsoft Excel de forma eficiente e produtiva. Ao longo do curso, os alunos aprendem uma variedade de tópicos e conceitos-chave relacionados ao Excel. "
+        },
+        {
+            "id": "561",
+            "modulo": "12",
+            "nome": "Microsoft Word",
+            "aulas": "18",
+            "carga": "27.0",
+            "descricao": "O Word é a versão mais recente do processador de texto da Microsoft, disponibilizaremos um curso especial para que você domine todas as técnicas, ferramentas e funções do Editor de Textos mais utilizado em todo o mundo."
+        },
+        {
+            "id": "562",
+            "modulo": "12",
+            "nome": "Microsoft Power Point",
+            "aulas": "18",
+            "carga": "27.0",
+            "descricao": "O PowerPoint é um software amplamente utilizado para apresentações, conhecido por sua interface intuitiva e recursos robustos."
+        },
+        {
+            "id": "568",
+            "modulo": "1",
+            "nome": "Microsoft Word Kids",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "O Word é o mais poderoso e conhecido editor de textos que temos no mercado hoje. Mundialmente usado, ele serve para criarmos vários tipos de trabalhos, desde cartas, até trabalhos de escola e trabalhos de conclusão para faculdades. Saber trabalhar com o Word cedo vai facilitar a sua vida escolar e profissional no futuro."
+        },
+        {
+            "id": "590",
+            "modulo": "13",
+            "nome": "Python",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "Este curso oferece uma introdução abrangente e prática à linguagem de programação Python, especialmente projetado para iniciantes. Durante a jornada de aprendizado, você construirá uma base sólida em Python, abordando conceitos essenciais de forma acessível e envolvente."
+        },
+        {
+            "id": "594",
+            "modulo": "12",
+            "nome": "Microsoft Power Point Kids",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "Bem-vindos ao curso de Power Point mais divertido de todos os tempos! Aqui, vamos aprender a transformar ideias malucas em apresentações incríveis. Com aulas cheias de cores, desafios e histórias de personagens que imitam a vida real, vocês vão virar mestres do PowerPoint enquanto se divertem muito!"
+        },
+        {
+            "id": "599",
+            "modulo": "14",
+            "nome": "Ambientes Digitais",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "O curso de Ambientes Digitais oferece conhecimentos introdutórios sobre as principais plataformas digitais da atualidade. Seu objetivo é familiarizar os alunos com os ambientes virtuais das redes sociais e das ferramentas de trabalho, buscando torná-los mais independentes e autônomos no contexto tecnológico, tanto social quanto profissional."
+        },
+        {
+            "id": "612",
+            "modulo": "10",
+            "nome": "Criador de Conteúdo Kids",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "Este curso foi criado especialmente para crianças que desejam se tornar Youtubers. Aqui, vamos explorar juntos o mundo do YouTube, entendendo como ele funciona e como criar conteúdos incríveis que capturam a atenção do público. Além de aprender a editar vídeos de forma simples com o Canva, as crianças também descobrirão como criar uma identidade única para seus canais e como enfrentar comentários negativos de maneira positiva."
+        },
+        {
+            "id": "619",
+            "modulo": "14",
+            "nome": "Inteligência Artificial",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "O curso aborda conceitos fundamentais de Inteligência Artificial (IA) e suas aplicações recentes, como Machine Learning e Deep Learning. Explora técnicas para interagir com modelos de linguagem, como ChatGPT, e como aplicar IA para otimizar o aprendizado, incluindo recursos como tirar dúvidas em tempo real e recomendações personalizadas. Além disso, examina aplicações práticas como geração de imagens, conteúdo para redes sociais e deepfakes, culminando em um projeto prático envolvendo ferramentas de IA para criar conteúdo original."
+        },
+        {
+            "id": "627",
+            "modulo": "14",
+            "nome": "Windows 11 Fast",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "O Windows é um dos sistemas operacionais mais utilizados no mundo. O Windows 11 vem com diversas novidades. Conhecimento sobre suas diversas funções é praticamente um requisito para aqueles que querem aprender a utilizar computadores e entrar no mercado de trabalho."
+        },
+        {
+            "id": "628",
+            "modulo": "12",
+            "nome": "Microsoft Word Fast",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "O Word é a versão mais recente do processador de texto da Microsoft, disponibilizaremos um curso especial para que você domine todas as técnicas, ferramentas e funções do Editor de Textos mais utilizado em todo o mundo."
+        },
+        {
+            "id": "639",
+            "modulo": "15",
+            "nome": "Inglês Introdutório",
+            "aulas": "5",
+            "carga": "7.5",
+            "descricao": "Hoje em dia sabemos que o Inglês é um dos idiomas necessários para ingressar no mercado de trabalho, pois  é a língua internacional que abrirá várias portas futuramente, e este curso irá guiá-lo por essa longa jornada. \r\nVeremos neste curso as principais estruturas gramaticais básicas do inglês para você aprender a começar a se comunicar."
+        },
+        {
+            "id": "659",
+            "modulo": "6",
+            "nome": "Excel Fundamental Fast",
+            "aulas": "9",
+            "carga": "13.5",
+            "descricao": "O curso fundamental de Excel tem como objetivo fornecer aos alunos uma base sólida nas habilidades essenciais para utilizar o Microsoft Excel de forma eficiente e produtiva. Ao longo do curso, os alunos aprendem uma variedade de tópicos e conceitos-chave relacionados ao Excel. "
+        },
+        {
+            "id": "679",
+            "modulo": "12",
+            "nome": "Administrativo Informatizado V4",
+            "aulas": "25",
+            "carga": "37.5",
+            "descricao": "O Curso de Administrativo Informatizado foi desenvolvido para capacitar profissionais a utilizarem ferramentas digitais no ambiente administrativo de forma eficiente. Com uma abordagem prática, o curso abrange desde os fundamentos do Windows 11, navegação na internet e uso de editores de texto como o Word, até o domínio de planilhas no Excel e criação de gráficos."
+        },
+        {
+            "id": "705",
+            "modulo": "13",
+            "nome": "Programação Kids",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "O nosso incrível curso Programação Kids é voltado exatamente para você! Que quer aprender os fundamentos para se tornar um desenvolvedor de respeito! Neste curso nós iremos ensinar a você de maneira simples e muito completa tudo o que é necessário para dominar a Lógica de Programação e o Pensamento Computacional sem usar telas pretas feias e códigos complicados que parecem não ter pé e nem cabeça. "
+        },
+        {
+            "id": "710",
+            "modulo": "6",
+            "nome": "Microsoft Power Point Fast",
+            "aulas": "9",
+            "carga": "13.5",
+            "descricao": "O PowerPoint é um software amplamente utilizado para apresentações, conhecido por sua interface intuitiva e recursos robustos."
+        },
+        {
+            "id": "723",
+            "modulo": "14",
+            "nome": "Ambientes Digitais Kids",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "O curso Ambientes Digitais Kids é uma jornada interativa e educativa pelo fascinante universo digital, especialmente projetada para crianças. Com uma abordagem envolvente e segura, o curso ensina como navegar pela internet, proteger informações pessoais e explorar ferramentas tecnológicas de forma criativa e divertida. Ao longo das aulas, os alunos se transformam em verdadeiros exploradores digitais, aprendendo sobre navegadores, segurança online, organização digital, criação de vídeos e até conceitos básicos de programação com Scratch. Cada etapa é repleta de desafios, atividades práticas e lições valiosas que unem aprendizado e diversão, despertando a curiosidade e desenvolvendo habilidades essenciais para a era digital."
+        },
+        {
+            "id": "734",
+            "modulo": "14",
+            "nome": "Empreendendo com Inteligência: AI nos Negócios",
+            "aulas": "5",
+            "carga": "7.5",
+            "descricao": "Este curso foi criado para capacitar profissionais a utilizar ferramentas avançadas de IA para transformar seu negócio, aprimorando suas estratégias de marketing e vendas, melhorando significativamente a experiência e o relacionamento com os clientes."
+        },
+        {
+            "id": "751",
+            "modulo": "7",
+            "nome": "CorelDRAW",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "No decorrer do nosso curso, aprenderemos a utilizar as principais ferramentas do CorelDRAW. Vamos descobrir como criar projetos tanto para mídias impressas quanto digitais, como logos, capas de revistas e cartões de visita."
+        },
+        {
+            "id": "754",
+            "modulo": "12",
+            "nome": "Digitação",
+            "aulas": "6",
+            "carga": "9.0",
+            "descricao": "Este curso de digitação ensina desde os conceitos básicos do teclado até técnicas avançadas, combinando teoria e prática para aumentar eficiência e precisão. Ele também inclui dicas ergonômicas para garantir conforto e evitar lesões durante a digitação."
+        },
+        {
+            "id": "770",
+            "modulo": "14",
+            "nome": "Inteligência Artificial Fast",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "O curso aborda conceitos fundamentais de Inteligência Artificial (IA). Explora técnicas para interagir com modelos de linguagem, como ChatGPT, e como aplicar IA para otimizar o aprendizado, incluindo recursos como tirar dúvidas em tempo real e recomendações personalizadas. Além disso, examina aplicações práticas como geração de imagens, vídeos e áudios."
+        },
+        {
+            "id": "771",
+            "modulo": "14",
+            "nome": "Inteligência Artificial Lite",
+            "aulas": "3",
+            "carga": "4.5",
+            "descricao": "O curso aborda conceitos fundamentais de Inteligência Artificial (IA) e suas aplicações recentes. Explorar técnicas para interagir com modelos de linguagem, como ChatGPT, e como aplicar IA para otimizar o aprendizado, incluindo recursos como tirar dúvidas em tempo real e recomendações personalizadas. "
+        },
+        {
+            "id": "773",
+            "modulo": "14",
+            "nome": "Introdução à Informática V3",
+            "aulas": "5",
+            "carga": "7.5",
+            "descricao": "O curso sobre Introdução à Informática foi projetado para fornecer uma base sólida sobre os conceitos e práticas essenciais da informática. Se você é novo no mundo da tecnologia ou deseja aprimorar seus conhecimentos iniciais, este curso é ideal para você."
+        },
+        {
+            "id": "775",
+            "modulo": "12",
+            "nome": "Digitação Lite",
+            "aulas": "3",
+            "carga": "4.5",
+            "descricao": "Este curso de digitação ensina desde os conceitos básicos do teclado até técnicas avançadas, combinando teoria e prática para aumentar eficiência e precisão. Ele também inclui dicas ergonômicas para garantir conforto e evitar lesões durante a digitação."
+        },
+        {
+            "id": "780",
+            "modulo": "14",
+            "nome": "Marketing Digital V2",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "Este curso de Marketing Digital é uma jornada completa para explorar o fascinante universo das estratégias e ferramentas digitais. Desde os conceitos fundamentais até as práticas avançadas, você será guiado passo a passo para entender como promover marcas de forma eficiente no ambiente online. Com uma abordagem dinâmica e prática, o curso abrange desde a evolução histórica do marketing digital até a aplicação de campanhas estratégicas em diversas plataformas. Seja você um iniciante ou alguém que busca aprimorar seus conhecimentos, este curso oferece tudo o que é necessário para dominar o marketing digital e se destacar no mercado atual."
+        },
+        {
+            "id": "782",
+            "modulo": "10",
+            "nome": "Criador de Conteúdo Kids Fast",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "Este curso foi criado especialmente para crianças que desejam se tornar Youtubers. Aqui, vamos explorar juntos o mundo do YouTube, entendendo como ele funciona e como criar conteúdos incríveis que capturam a atenção do público. "
+        },
+        {
+            "id": "783",
+            "modulo": "10",
+            "nome": "Criador de Conteúdo Kids Lite",
+            "aulas": "3",
+            "carga": "4.5",
+            "descricao": "Este curso foi criado especialmente para crianças que desejam se tornar Youtubers. Aqui, vamos explorar juntos o mundo do YouTube, entendendo como ele funciona e como planejar seu primeiro canal."
+        },
+        {
+            "id": "793",
+            "modulo": "13",
+            "nome": "Desenvolvedor de App Android Studio V3",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "Este curso é voltado para iniciantes no desenvolvimento de aplicativos Android. Você aprenderá a criar e publicar apps utilizando o Android Studio, desde a introdução à ferramenta até o desenvolvimento de um projeto completo."
+        },
+        {
+            "id": "796",
+            "modulo": "12",
+            "nome": "Administrativo Informatizado V4 Fast",
+            "aulas": "12",
+            "carga": "18.0",
+            "descricao": "O Curso de Administrativo Informatizado foi desenvolvido para capacitar profissionais a utilizarem ferramentas digitais no ambiente administrativo de forma eficiente. Com uma abordagem prática, o curso abrange desde os fundamentos do Windows 11, navegação na internet e uso de editores de texto como o Word, até o domínio de planilhas no Excel."
+        },
+        {
+            "id": "798",
+            "modulo": "12",
+            "nome": "Administrativo Informatizado V4 Lite",
+            "aulas": "3",
+            "carga": "4.5",
+            "descricao": "O Curso de Administrativo Informatizado foi desenvolvido para capacitar profissionais a utilizarem ferramentas digitais no ambiente administrativo de forma eficiente."
+        },
+        {
+            "id": "818",
+            "modulo": "7",
+            "nome": "CorelDRAW Fast",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "No decorrer do nosso curso, aprenderemos a utilizar as principais ferramentas do CorelDRAW. Vamos descobrir como criar projetos tanto para mídias impressas quanto digitais, como logos, capas de revistas e cartões de visita."
+        },
+        {
+            "id": "819",
+            "modulo": "7",
+            "nome": "CorelDRAW Lite",
+            "aulas": "3",
+            "carga": "4.5",
+            "descricao": "No decorrer do nosso curso, aprenderemos a utilizar as principais ferramentas do CorelDRAW. "
+        },
+        {
+            "id": "822",
+            "modulo": "7",
+            "nome": "Adobe Illustrator",
+            "aulas": "16",
+            "carga": "24.0",
+            "descricao": "O Adobe Illustrator é um software de design baseado em vetores. Dessa forma, suas imagens podem ser reduzidas para telas de dispositivos móveis ou ampliadas para preencher um outdoor sem perder qualidade nem aparência visual. Amplamente utilizado para a criação de desenhos, tipografias ou ilustrações em geral, o Adobe Illustrator é considerado uma das melhores ferramentas de design do mercado."
+        },
+        {
+            "id": "828",
+            "modulo": "14",
+            "nome": "Marketing Digital V2 Fast",
+            "aulas": "6",
+            "carga": "9.0",
+            "descricao": "Este curso de Marketing Digital é uma jornada completa para explorar o fascinante universo das estratégias e ferramentas digitais. "
+        },
+        {
+            "id": "829",
+            "modulo": "14",
+            "nome": "Marketing Digital V2 Lite",
+            "aulas": "3",
+            "carga": "4.5",
+            "descricao": "Este curso de Marketing Digital é uma jornada para explorar o fascinante universo das estratégias e ferramentas digitais. "
+        },
+        {
+            "id": "836",
+            "modulo": "10",
+            "nome": "ChatGPT",
+            "aulas": "5",
+            "carga": "7.5",
+            "descricao": "No decorrer do nosso curso, aprenderemos a utilizar o ChatGPT. Vamos descobrir como utilizar o Chat para ir muito al&eacute;m, desde de tarefas di&aacute;rias at&eacute; automatizar tarefas."
+        },
+        {
+            "id": "837",
+            "modulo": "14",
+            "nome": "Ambientes Digitais Kids Fast",
+            "aulas": "6",
+            "carga": "9.0",
+            "descricao": "O curso Ambientes Digitais Kids é uma jornada interativa e educativa pelo fascinante universo digital, especialmente projetada para crianças. Com uma abordagem envolvente e segura, o curso ensina como navegar pela internet, proteger informações pessoais e explorar ferramentas tecnológicas de forma criativa e divertida. Ao longo das aulas, os alunos se transformam em verdadeiros exploradores digitais, aprendendo sobre navegadores, segurança online, organização digital, criação de vídeos e até conceitos básicos de programação com Scratch. Cada etapa é repleta de desafios, atividades práticas e lições valiosas que unem aprendizado e diversão, despertando a curiosidade e desenvolvendo habilidades essenciais para a era digital."
+        },
+        {
+            "id": "838",
+            "modulo": "14",
+            "nome": "Ambientes Digitais Kids Lite",
+            "aulas": "3",
+            "carga": "4.5",
+            "descricao": "O curso Ambientes Digitais Kids Lite é uma jornada interativa e educativa pelo fascinante universo digital, especialmente projetada para crianças. Com uma abordagem envolvente e segura, o curso ensina como navegar pela internet, proteger informações pessoais e explorar ferramentas tecnológicas de forma criativa e divertida. "
+        },
+        {
+            "id": "899",
+            "modulo": "7",
+            "nome": "Adobe Illustrator Fast",
+            "aulas": "8",
+            "carga": "12.0",
+            "descricao": "O Adobe Illustrator é um software de design baseado em vetores. Dessa forma, suas imagens podem ser reduzidas para telas de dispositivos móveis ou ampliadas para preencher um outdoor sem perder qualidade nem aparência visual. Amplamente utilizado para a criação de desenhos, tipografias ou ilustrações em geral, o Adobe Illustrator é considerado uma das melhores ferramentas de design do mercado."
+        },
+        {
+            "id": "900",
+            "modulo": "7",
+            "nome": "Adobe Illustrator Lite",
+            "aulas": "3",
+            "carga": "4.5",
+            "descricao": "O Adobe Illustrator é um software de design baseado em vetores. Dessa forma, suas imagens podem ser reduzidas para telas de dispositivos móveis ou ampliadas para preencher um outdoor sem perder qualidade nem aparência visual. Amplamente utilizado para a criação de desenhos, tipografias ou ilustrações em geral, o Adobe Illustrator é considerado uma das melhores ferramentas de design do mercado."
+        }
+    ],
+    "total": 141
+}
