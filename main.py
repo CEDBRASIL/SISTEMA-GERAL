@@ -44,7 +44,7 @@ app.include_router(cursosom.router,   prefix="/cursosom",   tags=["Cursos OM"])
 app.include_router(secure.router,                        tags=["Autenticação"])
 app.include_router(matricular.router, prefix="/matricular", tags=["Matrícula"])
 app.include_router(alunos.router,     prefix="/alunos",     tags=["Alunos"])
-app.include_router(kiwify.router, prefix="/kiwify", tags=["Kiwify"])
+app.include_router(kiwify.router,     prefix="/kiwify", tags=["Kiwify"])
 
 
 
