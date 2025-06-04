@@ -102,12 +102,18 @@ def _normalizar(texto: str) -> str:
 
 
 def _ids_curso_por_nome(nome: Optional[str]) -> List[int]:
-    """Retorna IDs de disciplinas para o nome de curso informado."""
+    """Tenta encontrar os IDs de disciplinas a partir do nome do curso.
+
+    A busca ignora acentos/caixa e aceita correspondências parciais para lidar
+    com variações vindas da Kiwify (ex.: sufixos como "parcelado" ou "mensal").
+    """
     if not nome:
         return []
+
     alvo = _normalizar(nome)
     for chave, ids in CURSOS_OM.items():
-        if _normalizar(chave) == alvo:
+        chave_norm = _normalizar(chave)
+        if chave_norm == alvo or chave_norm in alvo or alvo in chave_norm:
             return ids
     return []
 
