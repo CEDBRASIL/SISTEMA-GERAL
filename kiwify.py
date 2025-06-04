@@ -163,10 +163,11 @@ def buscar_aluno_por_cpf(cpf: str) -> int:
         return None
 
 
-@router.post('/webhook')
+@router.post('/')
 async def webhook(request: Request):
     """
     Rota principal para processar webhooks de reembolso e aprovação de pedidos.
+    Acessível via POST em ``/kiwify``.
     - Se for 'order_refunded', exclui o aluno.
     - Se for 'order_approved', cadastra, matricula e notifica o aluno.
     """
