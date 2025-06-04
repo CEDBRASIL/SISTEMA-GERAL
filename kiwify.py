@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify
-import requests
+from fastapi import APIRouter, Request, Depends
+from fastapi.responses import JSONResponse
 from requests.auth import HTTPBasicAuth
+import requests
 import os
 import json
 
-app = Flask(__name__)
+router = APIRouter()
 
 # 1. CONSTANTES E VARIÁVEIS DE AMBIENTE
 OURO_BASE_URL        = os.getenv("OURO_BASE_URL")
@@ -122,11 +123,8 @@ TOKEN_UNIDADE = obter_token_unidade()
 MAPEAMENTO_CURSOS = obter_mapeamento_cursos()
 
 
-@app.before_request
-def log_request_info():
-    """
-    Registra toda requisição recebida (URL, método, cabeçalhos) e envia para o Discord.
-    """
+async def log_request_info(request: Request) -> None:
+    """Registra a requisição recebida e envia para o Discord."""
     mensagem = (
         f"\n📥 Requisição recebida:\n"
         f"🔗 URL completa: {request.url}\n"
@@ -136,16 +134,18 @@ def log_request_info():
     print(mensagem)
     enviar_log_discord(mensagem)
 
+router.dependencies.append(Depends(log_request_info))
 
-@app.route('/secure', methods=['GET', 'HEAD'])
-def secure_check():
+
+@router.get('/secure')
+async def secure_check():
     """
     Rota para forçar atualização manual do token da unidade.
     """
     novo = obter_token_unidade()
     if novo:
-        return "🔐 Token atualizado com sucesso via /secure", 200
-    return "❌ Falha ao atualizar token via /secure", 500
+        return "🔐 Token atualizado com sucesso via /secure"
+    return JSONResponse(content="❌ Falha ao atualizar token via /secure", status_code=500)
 
 
 def buscar_aluno_por_cpf(cpf: str) -> int:
@@ -178,8 +178,8 @@ def buscar_aluno_por_cpf(cpf: str) -> int:
         return None
 
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
+@router.post('/webhook')
+async def webhook(request: Request):
     """
     Rota principal para processar webhooks de reembolso e aprovação de pedidos.
     - Se for 'order_refunded', exclui o aluno.
@@ -187,7 +187,7 @@ def webhook():
     """
     try:
         print("\n🔔 Webhook recebido com sucesso")
-        payload = request.json
+        payload = await request.json()
         evento = payload.get("webhook_event_type")
 
         # ─── TRATAMENTO DE REEMBOLSO ─────────────────────────────────────────────
@@ -198,14 +198,14 @@ def webhook():
                 erro_msg = "❌ CPF do aluno não encontrado no payload de reembolso."
                 print(erro_msg)
                 enviar_log_whatsapp(erro_msg)
-                return jsonify({"error": "CPF do aluno não encontrado."}), 400
+                return JSONResponse(content={"error": "CPF do aluno não encontrado."}, status_code=400)
 
             aluno_id = buscar_aluno_por_cpf(cpf)
             if not aluno_id:
                 erro_msg = "❌ ID do aluno não encontrado para o CPF fornecido."
                 print(erro_msg)
                 enviar_log_whatsapp(erro_msg)
-                return jsonify({"error": "ID do aluno não encontrado."}), 400
+                return JSONResponse(content={"error": "ID do aluno não encontrado."}, status_code=400)
 
             print(f"🗑️ Excluindo conta do aluno com ID: {aluno_id}")
             resp_exclusao = requests.delete(
@@ -220,16 +220,16 @@ def webhook():
                 )
                 print(erro_msg)
                 enviar_log_whatsapp(erro_msg)
-                return jsonify({"error": "Falha ao excluir aluno", "detalhes": resp_exclusao.text}), 500
+                return JSONResponse(content={"error": "Falha ao excluir aluno", "detalhes": resp_exclusao.text}, status_code=500)
 
             msg_exclusao = f"✅ Conta do aluno com ID {aluno_id} excluída com sucesso."
             print(msg_exclusao)
             enviar_log_whatsapp(msg_exclusao)
-            return jsonify({"message": "Conta do aluno excluída com sucesso."}), 200
+            return {"message": "Conta do aluno excluída com sucesso."}
 
         # ─── IGNORA OUTROS EVENTOS MENOS 'order_approved' ─────────────────────────
         if evento != "order_approved":
-            return jsonify({"message": "Evento ignorado"}), 200
+            return {"message": "Evento ignorado"}
 
         # ─── TRATAMENTO DE APROVAÇÃO DE PEDIDO ────────────────────────────────────
         # Atualiza o mapeamento de cursos antes de usar
@@ -252,7 +252,7 @@ def webhook():
 
         cursos_ids = MAPEAMENTO_CURSOS.get(plano_assinatura)
         if not cursos_ids:
-            return jsonify({"error": f"Plano '{plano_assinatura}' não mapeado."}), 400
+            return JSONResponse(content={"error": f"Plano '{plano_assinatura}' não mapeado."}, status_code=400)
 
         # ─── CADASTRO DO ALUNO ────────────────────────────────────────────────────
         dados_aluno = {
@@ -290,14 +290,14 @@ def webhook():
             )
             print(erro_msg)
             enviar_log_whatsapp(erro_msg)
-            return jsonify({"error": "Falha ao criar aluno", "detalhes": resp_cadastro.text}), 500
+            return JSONResponse(content={"error": "Falha ao criar aluno", "detalhes": resp_cadastro.text}, status_code=500)
 
         aluno_id = aluno_response.get("data", {}).get("id")
         if not aluno_id:
             erro_msg = f"❌ ID do aluno não retornado!\nAluno: {nome}, CPF: {cpf}, Celular: {celular}"
             print(erro_msg)
             enviar_log_whatsapp(erro_msg)
-            return jsonify({"error": "ID do aluno não encontrado na resposta de cadastro."}), 500
+            return JSONResponse(content={"error": "ID do aluno não encontrado na resposta de cadastro."}, status_code=500)
 
         print(f"✅ Aluno criado com sucesso. ID: {aluno_id}")
 
@@ -325,7 +325,7 @@ def webhook():
             )
             print(erro_msg)
             enviar_log_whatsapp(erro_msg)
-            return jsonify({"error": "Falha ao matricular", "detalhes": resp_matricula.text}), 500
+            return JSONResponse(content={"error": "Falha ao matricular", "detalhes": resp_matricula.text}, status_code=500)
 
         msg_matricula = (
             f"✅ MATRÍCULA REALIZADA COM SUCESSO\n"
@@ -361,19 +361,16 @@ def webhook():
         else:
             print("✅ Mensagem enviada com sucesso")
 
-        return jsonify({
+        return {
             "message": "Aluno cadastrado, matriculado e notificado com sucesso! Matrícula efetuada com sucesso!",
             "aluno_id": aluno_id,
-            "cursos": cursos_ids
-        }), 200
+            "cursos": cursos_ids,
+        }
 
     except Exception as e:
         erro_msg = f"❌ EXCEÇÃO NO PROCESSAMENTO: {str(e)}"
         print(erro_msg)
         enviar_log_whatsapp(erro_msg)
-        return jsonify({"error": "Erro interno no servidor", "detalhes": str(e)}), 500
+        return JSONResponse(content={"error": "Erro interno no servidor", "detalhes": str(e)}, status_code=500)
 
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
