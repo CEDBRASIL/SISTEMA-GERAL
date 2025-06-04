@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
-from requests.auth import HTTPBasicAuth
 import requests
 import os
 import json
@@ -8,18 +7,12 @@ import json
 router = APIRouter()
 
 # 1. CONSTANTES E VARIÁVEIS DE AMBIENTE
-OURO_BASE_URL        = os.getenv("OURO_BASE_URL")
-BASIC_AUTH           = os.getenv("BASIC_AUTH")
-SUPORTE_WHATSAPP     = os.getenv("SUPORTE_WHATSAPP")
-CHATPRO_TOKEN        = os.getenv("CHATPRO_TOKEN")
-CHATPRO_INSTANCIA    = os.getenv("CHATPRO_INSTANCIA")
-CHATPRO_URL          = os.getenv("CHATPRO_URL")
-CALLMEBOT_APIKEY     = os.getenv("CALLMEBOT_APIKEY")
-CALLMEBOT_PHONE      = os.getenv("CALLMEBOT_PHONE")
-API_URL_TOKEN        = os.getenv("API_URL")  # ex: https://meuappdecursos.com.br/ws/v2/unidades/token/
-ID_UNIDADE           = int(os.getenv("ID_UNIDADE", 0))
-KEY                  = os.getenv("KEY")
-DISCORD_WEBHOOK      = os.getenv("DISCORD_WEBHOOK")
+OM_BASE        = os.getenv("OM_BASE")
+BASIC_B64      = os.getenv("BASIC_B64")
+CHATPRO_TOKEN  = os.getenv("CHATPRO_TOKEN")
+CHATPRO_URL    = os.getenv("CHATPRO_URL")
+UNIDADE_ID     = os.getenv("UNIDADE_ID")
+DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 
 # 2. NOVA CONSTANTE PARA BUSCAR O MAPEAMENTO DE CURSOS
 CURSOS_API_URL       = "https://api.cedbrasilia.com.br/cursos"
@@ -46,21 +39,10 @@ def enviar_log_discord(mensagem: str) -> None:
         print("❌ Erro ao enviar log para Discord:", str(e))
 
 
-def enviar_log_whatsapp(mensagem: str) -> None:
-    """Envia mensagem de log para o WhatsApp usando CallMeBot e também encaminha para Discord."""
-    try:
-        msg_formatada = requests.utils.quote(mensagem)
-        url = f"https://api.callmebot.com/whatsapp.php?phone={CALLMEBOT_PHONE}&text={msg_formatada}&apikey={CALLMEBOT_APIKEY}"
-        resp = requests.get(url)
-        if resp.status_code == 200:
-            print("✅ Log enviado ao WhatsApp com sucesso.")
-        else:
-            print("❌ Falha ao enviar log para WhatsApp:", resp.text)
-    except Exception as e:
-        print("❌ Erro ao enviar log para WhatsApp:", str(e))
-    finally:
-        # Em qualquer caso, repassar para Discord
-        enviar_log_discord(mensagem)
+# Função de log única utilizando apenas o Discord
+def enviar_log(mensagem: str) -> None:
+    """Envia mensagem de log para o Discord."""
+    enviar_log_discord(mensagem)
 
 
 def obter_token_unidade() -> str:
@@ -70,7 +52,10 @@ def obter_token_unidade() -> str:
     """
     global TOKEN_UNIDADE
     try:
-        resposta = requests.get(f"{API_URL_TOKEN}{ID_UNIDADE}", auth=HTTPBasicAuth(KEY, ""))
+        resposta = requests.get(
+            f"{OM_BASE}/unidades/token/{UNIDADE_ID}",
+            headers={"Authorization": f"Basic {BASIC_B64}"},
+        )
         dados = resposta.json()
         if dados.get("status") == "true":
             TOKEN_UNIDADE = dados["data"]["token"]
@@ -81,11 +66,11 @@ def obter_token_unidade() -> str:
 
         mensagem = f"❌ Erro ao obter token: {dados}"
         print(mensagem)
-        enviar_log_whatsapp(mensagem)
+        enviar_log(mensagem)
     except Exception as e:
         mensagem = f"❌ Exceção ao obter token: {str(e)}"
         print(mensagem)
-        enviar_log_whatsapp(mensagem)
+        enviar_log(mensagem)
 
     return None
 
@@ -113,7 +98,7 @@ def obter_mapeamento_cursos() -> dict:
     except Exception as e:
         mensagem = f"❌ Falha ao obter mapeamento de cursos: {str(e)}"
         print(mensagem)
-        enviar_log_whatsapp(mensagem)
+        enviar_log(mensagem)
         # Mantém o MAPEAMENTO_CURSOS como {} (vazio) em caso de erro
         return {}
 
@@ -156,8 +141,8 @@ def buscar_aluno_por_cpf(cpf: str) -> int:
     try:
         print(f"🔍 Buscando aluno com CPF: {cpf}")
         resp = requests.get(
-            f"{OURO_BASE_URL}/alunos",
-            headers={"Authorization": f"Basic {BASIC_AUTH}"},
+            f"{OM_BASE}/alunos",
+            headers={"Authorization": f"Basic {BASIC_B64}"},
             params={"cpf": cpf}
         )
         if not resp.ok:
@@ -197,20 +182,20 @@ async def webhook(request: Request):
             if not cpf:
                 erro_msg = "❌ CPF do aluno não encontrado no payload de reembolso."
                 print(erro_msg)
-                enviar_log_whatsapp(erro_msg)
+                enviar_log(erro_msg)
                 return JSONResponse(content={"error": "CPF do aluno não encontrado."}, status_code=400)
 
             aluno_id = buscar_aluno_por_cpf(cpf)
             if not aluno_id:
                 erro_msg = "❌ ID do aluno não encontrado para o CPF fornecido."
                 print(erro_msg)
-                enviar_log_whatsapp(erro_msg)
+                enviar_log(erro_msg)
                 return JSONResponse(content={"error": "ID do aluno não encontrado."}, status_code=400)
 
             print(f"🗑️ Excluindo conta do aluno com ID: {aluno_id}")
             resp_exclusao = requests.delete(
-                f"{OURO_BASE_URL}/alunos/{aluno_id}",
-                headers={"Authorization": f"Basic {BASIC_AUTH}"}
+                f"{OM_BASE}/alunos/{aluno_id}",
+                headers={"Authorization": f"Basic {BASIC_B64}"}
             )
             if not resp_exclusao.ok:
                 erro_msg = (
@@ -219,12 +204,12 @@ async def webhook(request: Request):
                     f"🔧 Detalhes: {resp_exclusao.text}"
                 )
                 print(erro_msg)
-                enviar_log_whatsapp(erro_msg)
+                enviar_log(erro_msg)
                 return JSONResponse(content={"error": "Falha ao excluir aluno", "detalhes": resp_exclusao.text}, status_code=500)
 
             msg_exclusao = f"✅ Conta do aluno com ID {aluno_id} excluída com sucesso."
             print(msg_exclusao)
-            enviar_log_whatsapp(msg_exclusao)
+            enviar_log(msg_exclusao)
             return {"message": "Conta do aluno excluída com sucesso."}
 
         # ─── IGNORA OUTROS EVENTOS MENOS 'order_approved' ─────────────────────────
@@ -276,9 +261,9 @@ async def webhook(request: Request):
 
         print("📨 Enviando dados do aluno para a API de cadastro...")
         resp_cadastro = requests.post(
-            f"{OURO_BASE_URL}/alunos",
+            f"{OM_BASE}/alunos",
             data=dados_aluno,
-            headers={"Authorization": f"Basic {BASIC_AUTH}"}
+            headers={"Authorization": f"Basic {BASIC_B64}"}
         )
         aluno_response = resp_cadastro.json()
         print("📨 Resposta completa do cadastro:", aluno_response)
@@ -289,14 +274,14 @@ async def webhook(request: Request):
                 f"Aluno: {nome}, CPF: {cpf}, Email: {email}, Celular: {celular}"
             )
             print(erro_msg)
-            enviar_log_whatsapp(erro_msg)
+            enviar_log(erro_msg)
             return JSONResponse(content={"error": "Falha ao criar aluno", "detalhes": resp_cadastro.text}, status_code=500)
 
         aluno_id = aluno_response.get("data", {}).get("id")
         if not aluno_id:
             erro_msg = f"❌ ID do aluno não retornado!\nAluno: {nome}, CPF: {cpf}, Celular: {celular}"
             print(erro_msg)
-            enviar_log_whatsapp(erro_msg)
+            enviar_log(erro_msg)
             return JSONResponse(content={"error": "ID do aluno não encontrado na resposta de cadastro."}, status_code=500)
 
         print(f"✅ Aluno criado com sucesso. ID: {aluno_id}")
@@ -308,9 +293,9 @@ async def webhook(request: Request):
         }
         print(f"📨 Dados para matrícula do aluno {aluno_id}: {dados_matricula}")
         resp_matricula = requests.post(
-            f"{OURO_BASE_URL}/alunos/matricula/{aluno_id}",
+            f"{OM_BASE}/alunos/matricula/{aluno_id}",
             data=dados_matricula,
-            headers={"Authorization": f"Basic {BASIC_AUTH}"}
+            headers={"Authorization": f"Basic {BASIC_B64}"}
         )
 
         if not resp_matricula.ok or resp_matricula.json().get("status") != "true":
@@ -324,7 +309,7 @@ async def webhook(request: Request):
                 f"🔧 Detalhes: {resp_matricula.text}"
             )
             print(erro_msg)
-            enviar_log_whatsapp(erro_msg)
+            enviar_log(erro_msg)
             return JSONResponse(content={"error": "Falha ao matricular", "detalhes": resp_matricula.text}, status_code=500)
 
         msg_matricula = (
@@ -335,7 +320,7 @@ async def webhook(request: Request):
             f"🎓 Cursos: {cursos_ids}"
         )
         print(msg_matricula)
-        enviar_log_whatsapp(msg_matricula)
+        enviar_log(msg_matricula)
 
         # ─── ENVIO DE MENSAGEM DE BOAS-VINDAS VIA CHATPRO ──────────────────────────
         mensagem = (
@@ -370,7 +355,7 @@ async def webhook(request: Request):
     except Exception as e:
         erro_msg = f"❌ EXCEÇÃO NO PROCESSAMENTO: {str(e)}"
         print(erro_msg)
-        enviar_log_whatsapp(erro_msg)
+        enviar_log(erro_msg)
         return JSONResponse(content={"error": "Erro interno no servidor", "detalhes": str(e)}, status_code=500)
 
 
