@@ -290,10 +290,10 @@ async def _process_webhook(payload: dict):
             "*Seu acesso:*\n"
             f"Login: *{cpf}*\n"
             "Senha: *123456*\n\n"
-            "🌐 *Portal do aluno:* https://ead.cedbrasilia.com.br\n"
-            "📲 *App Android:* https://play.google.com/store/apps/details?id=br.com.om.app&hl=pt_BR\n"
+            "🌐 *Site da escola:* https://www.cedbrasilia.com.br\n"
+            "⭐ *App Android:* https://play.google.com/store/apps/details?id=br.com.om.app&hl=pt_BR\n"
             "📱 *App iOS:* https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
-            "🌐 *Site da Escola* https://www.cedbrasilia.com.br\n"
+            "❤️ *Vire parceiro/a da CED BRASIL* https://www.cedbrasilia.com.br/parceiros\n"
         )
         resp_whatsapp = requests.post(
             CHATPRO_URL,
