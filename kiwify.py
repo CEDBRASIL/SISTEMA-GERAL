@@ -16,7 +16,7 @@ CHATPRO_URL = os.getenv("CHATPRO_URL")
 UNIDADE_ID = os.getenv("UNIDADE_ID")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 
-# Token de unidade guardado em memória
+# Token de unidade em memória
 TOKEN_UNIDADE: str | None = None
 
 
@@ -34,9 +34,7 @@ def enviar_log_discord(mensagem: str) -> None:
 
 def obter_token_unidade() -> str | None:
     """
-    Requisita um novo token da unidade ao OM.
-    Armazena em TOKEN_UNIDADE e retorna a string do token,
-    ou None em caso de falha.
+    Busca um token de unidade no OM e atualiza a variável global TOKEN_UNIDADE.
     """
     global TOKEN_UNIDADE
     try:
@@ -57,8 +55,7 @@ def obter_token_unidade() -> str | None:
 
 def buscar_aluno_por_cpf(cpf: str) -> str | None:
     """
-    Busca o primeiro aluno no OM que tenha o CPF informado.
-    Retorna o ID do aluno como string, ou None se não encontrado/falha.
+    Retorna o ID do primeiro aluno registrado no OM com o CPF informado.
     """
     try:
         resp = requests.get(
@@ -80,8 +77,7 @@ def buscar_aluno_por_cpf(cpf: str) -> str | None:
 
 def _normalize(text: str) -> str:
     """
-    Remove acentos e converte para caixa baixa.
-    Usado para mapeamento flexível de nomes de planos.
+    Remove acentos e converte para caixa baixa para comparação flexível.
     """
     return (
         unicodedata.normalize("NFKD", text or "")
@@ -93,20 +89,20 @@ def _normalize(text: str) -> str:
 
 def obter_cursos_ids(nome_plano: str):
     """
-    Obtém a lista de IDs dos cursos correspondentes ao nome do plano, 
-    incluindo uma tentativa de fuzzy match caso o nome não bata exatamente.
+    Retorna a lista de IDs de cursos mapeadas por nome do plano (product_offer_name).
+    Faz correspondência exata (sem acentos) ou fuzzy se necessário.
     """
     if not nome_plano:
         return None
 
     norm_plano = _normalize(nome_plano)
 
-    # Correspondência exata (ignorando acentos e caixa)
+    # Correspondência exata (ignorando acentos)
     for key in CURSOS_OM:
         if _normalize(key) == norm_plano:
             return CURSOS_OM[key]
 
-    # Fuzzy match em caso de pequenas diferenças
+    # Tentativa de fuzzy match
     nomes_norm = {_normalize(k): k for k in CURSOS_OM}
     match = difflib.get_close_matches(norm_plano, nomes_norm.keys(), n=1, cutoff=0.8)
     if match:
@@ -117,8 +113,7 @@ def obter_cursos_ids(nome_plano: str):
 
 def log_request_info(request: Request) -> None:
     """
-    Função de dependência do FastAPI que faz log de cada requisição
-    no terminal e no Discord.
+    Dependência do FastAPI para logar todas as requisições no terminal e no Discord.
     """
     mensagem = (
         f"\n📥 Requisição recebida:\n"
@@ -130,17 +125,17 @@ def log_request_info(request: Request) -> None:
     enviar_log_discord(mensagem)
 
 
-# Registra a dependência para logar todas as requisições
+# Aplica o logger em todas as rotas
 router.dependencies.append(Depends(log_request_info))
 
-# Ao importar o módulo, já inicializa o token
+# Busca token assim que o módulo é importado
 TOKEN_UNIDADE = obter_token_unidade()
 
 
 @router.get("/secure")
 async def secure_check():
     """
-    Endpoint para forçar atualização manual do token.
+    Força atualização manual de TOKEN_UNIDADE via GET /secure
     """
     novo = obter_token_unidade()
     if novo:
@@ -152,14 +147,13 @@ async def secure_check():
 
 async def _process_webhook(payload: dict):
     """
-    Lida com o fluxo de criação, matrícula e exclusão de aluno conforme 
-    o evento enviado pelo Kiwify, já com o payload 'order' extraído.
+    Processa o payload de pedido (já extraído de payload["order"]) e
+    executa cadastro, matrícula ou exclusão de aluno conforme o evento.
     """
-
     try:
         evento = payload.get("webhook_event_type")
 
-        # 1) Se for reembolso, exclui aluno
+        # 1) Tratamento de reembolso → exclui o aluno
         if evento == "order_refunded":
             customer = payload.get("Customer", {})
             cpf = customer.get("CPF", "").replace(".", "").replace("-", "")
@@ -200,12 +194,11 @@ async def _process_webhook(payload: dict):
             enviar_log_discord(msg)
             return {"message": "Conta do aluno excluída com sucesso."}
 
-        # 2) Caso seja outro evento que não 'order_approved', ignora
+        # 2) Se não for pedido aprovado, ignora
         if evento != "order_approved":
             return {"message": "Evento ignorado"}
 
-        # 3) Se chegou aqui, é um novo pedido aprovado. Vamos cadastrar/matricular.
-
+        # 3) Pedido aprovado → cadastro e matrícula
         customer = payload.get("Customer", {})
         nome = customer.get("full_name")
         cpf = customer.get("CPF", "").replace(".", "").replace("-", "")
@@ -218,7 +211,8 @@ async def _process_webhook(payload: dict):
         complemento = customer.get("complement") or ""
         cep = customer.get("zipcode") or ""
 
-        plano_assinatura = payload.get("Subscription", {}).get("plan", {}).get("name")
+        # >>> AQUI: usa sempre product_offer_name para mapear o pacote comprado
+        plano_assinatura = payload.get("Product", {}).get("product_offer_name")
         cursos_ids = obter_cursos_ids(plano_assinatura)
         if not cursos_ids:
             return JSONResponse(
@@ -226,7 +220,7 @@ async def _process_webhook(payload: dict):
                 content={"error": f"Plano '{plano_assinatura}' não mapeado."},
             )
 
-        # Dados do aluno para cadastro
+        # Dados para cadastro no OM
         dados_aluno = {
             "token": TOKEN_UNIDADE,
             "nome": nome,
@@ -246,7 +240,7 @@ async def _process_webhook(payload: dict):
             "cep": cep,
         }
 
-        # 3.1) Cadastro de aluno no OM
+        # 3.1) Cadastra o aluno no OM
         resp_cadastro = requests.post(
             f"{OM_BASE}/alunos",
             data=dados_aluno,
@@ -270,12 +264,11 @@ async def _process_webhook(payload: dict):
                 content={"error": "ID do aluno não encontrado na resposta de cadastro."},
             )
 
-        # 3.2) Matrícula do aluno nos cursos
+        # 3.2) Matricula o aluno nos cursos obtidos
         dados_matricula = {
             "token": TOKEN_UNIDADE,
             "cursos": ",".join(str(c) for c in cursos_ids),
         }
-
         resp_matricula = requests.post(
             f"{OM_BASE}/alunos/matricula/{aluno_id}",
             data=dados_matricula,
@@ -289,7 +282,7 @@ async def _process_webhook(payload: dict):
                 content={"error": "Falha ao matricular", "detalhes": resp_matricula.text},
             )
 
-        # 3.3) Envio de mensagem via ChatPro/WhatsApp
+        # 3.3) Envia mensagem via ChatPro/WhatsApp
         numero_whatsapp = "55" + "".join(filter(str.isdigit, celular))[-11:]
         mensagem = (
             f"Oii {nome}, Seja bem Vindo/a Ao CED BRASIL\n\n"
@@ -297,12 +290,11 @@ async def _process_webhook(payload: dict):
             "*Seu acesso:*\n"
             f"Login: *{cpf}*\n"
             "Senha: *123456*\n\n"
-            "🌐 *Portal do aluno:* https://ead.cedbrasilia.com.br\n"
+            "🌐 *Site da escola:* https://www.cedbrasilia.com.br\n"
             "📲 *App Android:* https://play.google.com/store/apps/details?id=br.com.om.app&hl=pt_BR\n"
             "📱 *App iOS:* https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
-            "🌐 *Site da Escola* https://www.cedbrasilia.com.br\n"
+            "🌐 *Se torne parceiro!* https://www.cedbrasilia.com.br/parceiros\n"
         )
-
         resp_whatsapp = requests.post(
             CHATPRO_URL,
             json={"number": numero_whatsapp, "message": mensagem},
@@ -332,14 +324,14 @@ async def _process_webhook(payload: dict):
 @router.post("/webhook")
 async def webhook_kiwify(payload: dict):
     """
-    Rota oficial para receber o webhook do Kiwify.
-    Espera um JSON onde a chave 'order' contém todas as informações do pedido.
+    Rota oficial para receber o webhook Kiwify.
+    Extrai payload['order'] e chama _process_webhook.
     """
     order_payload = payload.get("order", {})
-    # Se não vier 'order', retornamos erro para facilitar o debug.
     if not order_payload:
         return JSONResponse(
-            content={"error": "Objeto 'order' não encontrado no payload."}, status_code=400
+            content={"error": "Objeto 'order' não encontrado no payload."},
+            status_code=400,
         )
     return await _process_webhook(order_payload)
 
@@ -347,12 +339,12 @@ async def webhook_kiwify(payload: dict):
 @router.post("/")
 async def webhook_root(payload: dict):
     """
-    Atalho para o mesmo comportamento de /webhook,
-    mantendo compatibilidade com URLs que apontem para raiz do router.
+    Alias para /webhook, mantendo compatibilidade.
     """
     order_payload = payload.get("order", {})
     if not order_payload:
         return JSONResponse(
-            content={"error": "Objeto 'order' não encontrado no payload."}, status_code=400
+            content={"error": "Objeto 'order' não encontrado no payload."},
+            status_code=400,
         )
     return await _process_webhook(order_payload)
