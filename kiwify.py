@@ -4,6 +4,7 @@ import os
 import requests
 import unicodedata
 import difflib
+import datetime
 from cursos import CURSOS_OM
 
 router = APIRouter()
@@ -284,6 +285,12 @@ async def _process_webhook(payload: dict):
 
         # 3.3) Envia mensagem via ChatPro/WhatsApp
         numero_whatsapp = "55" + "".join(filter(str.isdigit, celular))[-11:]
+
+        # Calcula data do próximo pagamento (30 dias após hoje)
+        hoje = datetime.datetime.now()
+        proximo_pagamento = hoje + datetime.timedelta(days=30)
+        data_formatada = proximo_pagamento.strftime("%d/%m/%Y")
+
         mensagem = (
             f"Oii {nome}, Seja bem Vindo/a Ao CED BRASIL\n\n"
             f"📦 *Plano adquirido:* {plano_assinatura}\n\n"
@@ -293,8 +300,10 @@ async def _process_webhook(payload: dict):
             "🌐 *Site da escola:* https://www.cedbrasilia.com.br\n"
             "⭐ *App Android:* https://play.google.com/store/apps/details?id=br.com.om.app&hl=pt_BR\n"
             "📱 *App iOS:* https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
-            "❤️ *Vire parceiro/a da CED BRASIL* https://www.cedbrasilia.com.br/parceiros\n"
+            "❤️ *Vire parceiro/a da CED BRASIL* https://www.cedbrasilia.com.br/parceiros\n\n"
+            f"💳 *Data do próximo pagamento:* {data_formatada}"
         )
+
         resp_whatsapp = requests.post(
             CHATPRO_URL,
             json={"number": numero_whatsapp, "message": mensagem},
