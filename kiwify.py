@@ -147,8 +147,8 @@ async def secure_check():
 
 async def _process_webhook(payload: dict):
     """
-    Processa o payload de pedido (já extraído de payload["order"]) e
-    executa cadastro, matrícula ou exclusão de aluno conforme o evento.
+    Processa o payload de pedido (já extraído de payload["order"] ou do próprio body)
+    e executa cadastro, matrícula ou exclusão de aluno conforme o evento.
     """
     try:
         evento = payload.get("webhook_event_type")
@@ -211,7 +211,7 @@ async def _process_webhook(payload: dict):
         complemento = customer.get("complement") or ""
         cep = customer.get("zipcode") or ""
 
-        # >>> AQUI: usa sempre product_offer_name para mapear o pacote comprado
+        # >>> Sempre usa product_offer_name para mapear o pacote comprado
         plano_assinatura = payload.get("Product", {}).get("product_offer_name")
         cursos_ids = obter_cursos_ids(plano_assinatura)
         if not cursos_ids:
@@ -290,10 +290,10 @@ async def _process_webhook(payload: dict):
             "*Seu acesso:*\n"
             f"Login: *{cpf}*\n"
             "Senha: *123456*\n\n"
-            "🌐 *Site da escola:* https://www.cedbrasilia.com.br\n"
+            "🌐 *Portal do aluno:* https://ead.cedbrasilia.com.br\n"
             "📲 *App Android:* https://play.google.com/store/apps/details?id=br.com.om.app&hl=pt_BR\n"
             "📱 *App iOS:* https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
-            "🌐 *Se torne parceiro!* https://www.cedbrasilia.com.br/parceiros\n"
+            "🌐 *Site da Escola* https://www.cedbrasilia.com.br\n"
         )
         resp_whatsapp = requests.post(
             CHATPRO_URL,
@@ -324,15 +324,12 @@ async def _process_webhook(payload: dict):
 @router.post("/webhook")
 async def webhook_kiwify(payload: dict):
     """
-    Rota oficial para receber o webhook Kiwify.
-    Extrai payload['order'] e chama _process_webhook.
+    Rota oficial para receber o webhook do Kiwify.
+    Extrai payload['order'] quando presente, senão usa payload direto.
     """
-    order_payload = payload.get("order", {})
-    if not order_payload:
-        return JSONResponse(
-            content={"error": "Objeto 'order' não encontrado no payload."},
-            status_code=400,
-        )
+    # Se vier {"order": { … } }, usa payload["order"].
+    # Se o body já for o objeto de pedido, usa payload diretamente.
+    order_payload = payload.get("order") or payload
     return await _process_webhook(order_payload)
 
 
@@ -341,10 +338,5 @@ async def webhook_root(payload: dict):
     """
     Alias para /webhook, mantendo compatibilidade.
     """
-    order_payload = payload.get("order", {})
-    if not order_payload:
-        return JSONResponse(
-            content={"error": "Objeto 'order' não encontrado no payload."},
-            status_code=400,
-        )
+    order_payload = payload.get("order") or payload
     return await _process_webhook(order_payload)
