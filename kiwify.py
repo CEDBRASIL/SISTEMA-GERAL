@@ -121,6 +121,7 @@ def log_request_info(request: Request) -> None:
         f"🔗 URL completa: {request.url}\n"
         f"📍 Método: {request.method}\n"
         f"📦 Cabeçalhos: {dict(request.headers)}"
+        F"👾 Evento: {webhook_event_type}"
     )
     print(mensagem)
     enviar_log_discord(mensagem)
