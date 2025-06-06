@@ -8,6 +8,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
 import gspread
 from google.oauth2.service_account import Credentials
+from cursos import CURSOS_OM
 
 # --- Roteador do FastAPI ---
 router = APIRouter()
@@ -104,11 +105,15 @@ def _normalize(text: str) -> str:
     return unicodedata.normalize("NFKD", text or "").encode("ASCII", "ignore").decode().lower()
 
 def obter_cursos_ids(nome_plano: str):
-    """Mapeia o nome do plano da Kiwify para IDs de curso usando o cache da API."""
-    if not nome_plano or not CURSOS_OM_CACHE:
+    """Mapeia o nome do plano da Kiwify para IDs de curso usando o cache da API
+    ou o mapeamento estático de ``cursos.CURSOS_OM`` como fallback."""
+
+    if not nome_plano:
         return None
 
     norm_plano = _normalize(nome_plano)
+
+    # 1) Busca no cache de cursos obtidos da API
     for key, value in CURSOS_OM_CACHE.items():
         if _normalize(key) == norm_plano:
             return value
@@ -117,6 +122,20 @@ def obter_cursos_ids(nome_plano: str):
     match = difflib.get_close_matches(norm_plano, nomes_norm.keys(), n=1, cutoff=0.8)
     if match:
         return CURSOS_OM_CACHE[nomes_norm[match[0]]]
+
+    # 2) Fallback para o dicionário estático
+    for key, value in CURSOS_OM.items():
+        if _normalize(key) == norm_plano:
+            enviar_log_discord(f"ℹ️ Plano encontrado via fallback estatico: '{key}'")
+            return value
+
+    nomes_norm_static = {_normalize(k): k for k in CURSOS_OM}
+    match_static = difflib.get_close_matches(norm_plano, nomes_norm_static.keys(), n=1, cutoff=0.8)
+    if match_static:
+        key = nomes_norm_static[match_static[0]]
+        enviar_log_discord(f"ℹ️ Plano aproximado encontrado via fallback: '{key}'")
+        return CURSOS_OM[key]
+
     return None
 
 def adicionar_aluno_planilha(dados: dict) -> None:
