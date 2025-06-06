@@ -25,7 +25,7 @@ def _obter_todos_alunos() -> list:
     while True:
         dados = _listar_alunos(page=page)
         for item in dados.get("data", []):
-            alunos.append({"nome": item.get("nome"), "login": item.get("usuario")})
+            alunos.append(item)
         pagina = dados.get("pagina", {})
         total = int(pagina.get("total", 0))
         size = int(pagina.get("size", 1000))
