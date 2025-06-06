@@ -16,6 +16,7 @@ CURSOS_OM: Dict[str, List[int]] = {
     "Especialista em Marketing & Vendas 360º": [123, 199, 202, 236, 264, 441, 734, 780, 828, 829],
     "Marketing Digital": [734, 236, 441, 199, 780],
     "Pacote Office": [160, 161, 162, 197, 201],
+    "None": [129, 198, 156, 154],
 }
 
 @router.get("/", summary="Lista de cursos disponíveis")
