@@ -100,6 +100,43 @@ def buscar_aluno_por_cpf(cpf: str) -> str | None:
         enviar_log_discord(f"❌ Erro ao buscar aluno por CPF: {e}")
         return None
 
+def enviar_whatsapp_chatpro(nome: str, celular: str, plano: str, cpf: str, senha_padrao: str = "123456") -> None:
+    """Envia uma mensagem de boas-vindas via ChatPro."""
+    if not CHATPRO_TOKEN or not CHATPRO_URL:
+        enviar_log_discord("⚠️ Variáveis do ChatPro não configuradas. Mensagem não enviada.")
+        return
+
+    numero_telefone = "".join(filter(str.isdigit, celular))
+
+    mensagem = (
+        f"👋 Olá, {nome}!\n\n"
+        f"🎉 Seja bem-vindo(a) ao CED BRASIL!\n\n"
+        f"📚 Curso adquirido: {plano}\n\n"
+        f"🔐 Seu login: {cpf}\n"
+        f"🔑 Sua senha: {senha_padrao}\n\n"
+        f"🌐 Portal do Aluno: https://ead.cedbrasilia.com.br\n"
+        f"🤖 APP Android: https://play.google.com/store/apps/datasafety?id=br.com.om.app&hl=pt_BR\n"
+        f"🍎 APP iOS: https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
+        f"Qualquer dúvida, estamos à disposição. Boa jornada de estudos! 🚀"
+    )
+
+    payload = {"number": numero_telefone, "message": mensagem}
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "Authorization": CHATPRO_TOKEN,
+    }
+    try:
+        r = requests.post(CHATPRO_URL, json=payload, headers=headers, timeout=10)
+        if r.ok:
+            enviar_log_discord(f"✅ WhatsApp enviado para {numero_telefone}. Resposta: {r.text}")
+        else:
+            enviar_log_discord(
+                f"❌ Falha ao enviar WhatsApp para {numero_telefone}. HTTP {r.status_code} | {r.text}"
+            )
+    except Exception as e:
+        enviar_log_discord(f"❌ Erro ao enviar WhatsApp para {numero_telefone}: {e}")
+
 def _normalize(text: str) -> str:
     """Remove acentos e converte para caixa baixa."""
     return unicodedata.normalize("NFKD", text or "").encode("ASCII", "ignore").decode().lower()
@@ -245,9 +282,7 @@ async def _process_webhook(payload: dict):
             enviar_log_discord(f"❌ ERRO MATRÍCULA (Aluno ID {aluno_id}): {resp_matricula.text}")
             raise HTTPException(500, f"Falha ao matricular: {resp_matricula.text}")
 
-        if CHATPRO_TOKEN and CHATPRO_URL:
-            # ... (Lógica de envio para o WhatsApp) ...
-            pass
+        enviar_whatsapp_chatpro(nome, celular, plano_assinatura, cpf)
 
         adicionar_aluno_planilha({
             "nome": nome, "celular": celular, "email": email, "cpf": cpf,
