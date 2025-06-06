@@ -182,7 +182,10 @@ def adicionar_aluno_planilha(dados: dict) -> None:
         return
         
     try:
-        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ]
         creds = None
         
         if GOOGLE_CREDENTIALS_JSON:
