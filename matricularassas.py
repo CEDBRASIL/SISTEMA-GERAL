@@ -1,6 +1,11 @@
 import os
 from fastapi import FastAPI, Request, HTTPException
 import requests
+import APIRouter
+
+# CHAMADA ROUTER 
+
+router = APIRouter()
 
 # Placeholder matricular function - adapt as needed
 try:
