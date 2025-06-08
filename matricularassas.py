@@ -1,9 +1,8 @@
 import os
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException
 import requests
-import APIRouter
 
-# CHAMADA ROUTER 
+# CHAMADA ROUTER
 
 router = APIRouter()
 
@@ -20,9 +19,8 @@ ASAAS_BASE_URL = os.getenv("ASAAS_BASE_URL")
 CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
 CHATPRO_URL = os.getenv("CHATPRO_URL")
 
-app = FastAPI()
 
-@app.post("/matricularasaas")
+@router.post("/matricularasaas")
 async def matricular_asaas(data: dict):
     nome = data.get("nome")
     cpf = data.get("cpf")
@@ -39,7 +37,8 @@ async def matricular_asaas(data: dict):
 
     return {"status": "ok"}
 
-@app.post("/webhooks/asaas")
+
+@router.post("/webhooks/asaas")
 async def asaas_webhook(req: Request):
     evt = await req.json()
     if evt.get("event") != "PAYMENT_RECEIVED":
