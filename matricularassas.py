@@ -1,7 +1,6 @@
 import os
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, APIRouter
 import requests
-import APIRouter
 
 # CHAMADA ROUTER 
 
