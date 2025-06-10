@@ -49,3 +49,24 @@ def bloquear(id_aluno: str, status: int):
         return {"message": "Status atualizado"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":  # pragma: no cover - utilitário de linha de comando
+    import sys
+
+    if len(sys.argv) != 3:
+        print("Uso: python bloquear.py <id_aluno> <status (0|1)>")
+        sys.exit(1)
+
+    aluno_id = sys.argv[1]
+    try:
+        status_int = int(sys.argv[2])
+    except ValueError:
+        print("Status deve ser 0 ou 1")
+        sys.exit(1)
+
+    try:
+        _alterar_bloqueio(aluno_id, status_int)
+        print("Status atualizado")
+    except Exception as exc:  # pragma: no cover - saída simples
+        print(f"Erro ao definir bloqueio: {exc}")
