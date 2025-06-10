@@ -9,7 +9,8 @@ import matricular
 import alunos
 import deletar
 import kiwify
-import matricularassas  
+import matricularassas
+import bloquear
 
 
 # ──────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ app.include_router(alunos.router,     prefix="/alunos",     tags=["Alunos"])
 app.include_router(kiwify.router,     prefix="/kiwify", tags=["Kiwify"])
 app.include_router(matricularassas.router,  tags=["Matrícula Assas"])
 app.include_router(deletar.router,    tags=["Excluir Aluno"])
+app.include_router(bloquear.router,   tags=["Bloqueio"])
 
 
 
