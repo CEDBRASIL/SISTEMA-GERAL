@@ -103,7 +103,7 @@ def _cadastrar_somente_aluno(
     whatsapp: str,
     email: Optional[str],
     token_key: str,
-    senha_padrao: str = "123456"
+    senha_padrao: str = "1234567"
 ) -> Tuple[str, str]:
     """
     Cadastra apenas o aluno na OM (gera e-mail dummy se não for fornecido).
@@ -205,7 +205,7 @@ def _send_whatsapp_chatpro(
     whatsapp: str,
     cursos_nomes: List[str],
     cpf: str,
-    senha_padrao: str = "123456"
+    senha_padrao: str = "1234567"
 ) -> None:
     """
     Envia mensagem automática no WhatsApp via ChatPro, com boas-vindas,
