@@ -19,6 +19,8 @@ CURSOS_OM: Dict[str, List[int]] = {
     "None": [129, 198, 156, 154],
 }
 
+# Aceita /cursos e /cursos/
+@router.get("", summary="Lista de cursos disponíveis")
 @router.get("/", summary="Lista de cursos disponíveis")
 async def listar_cursos():
     """Retorna o mapeamento de cursos do CED para as disciplinas da OM."""
