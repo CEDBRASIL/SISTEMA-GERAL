@@ -1,7 +1,9 @@
 fastapi
-uvicorn
+uvicorn[standard]
 requests
 mercadopago
 flask
 gspread
 google-auth-oauthlib
+phonenumbers
+wppconnect-python
