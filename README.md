@@ -35,22 +35,3 @@ python bloquear.py 123 0
 
 Isso envia a solicitação correspondente à API configurada por meio das variáveis de ambiente `OM_BASE`, `BASIC_B64` e `UNIDADE_ID`.
 
-
-
-## Backend WhatsApp (Node + TypeScript)
-
-Este projeto também disponibiliza um pequeno servidor em Node 20 para integração com o WhatsApp via [wppconnect](https://github.com/wppconnect-team/wppconnect).
-
-### Executando localmente
-
-```bash
-npm install
-npm run dev
-```
-
-O servidor escutará em `http://localhost:10000` (ou na porta definida pela variável `PORT`).
-
-### Endpoints
-
-- `GET /qr` – retorna `{ qr, status }` onde `status` é `loading` ou `ready`.
-- `POST /send` – corpo `{ numero: string, mensagem: string }`. O `numero` deve seguir o padrão E.164 (ex.: `+5561999998888`).
