@@ -6,4 +6,3 @@ flask
 gspread
 google-auth-oauthlib
 phonenumbers
-wppconnect-python
