@@ -100,7 +100,7 @@ def buscar_aluno_por_cpf(cpf: str) -> str | None:
         enviar_log_discord(f"❌ Erro ao buscar aluno por CPF: {e}")
         return None
 
-def enviar_whatsapp_chatpro(nome: str, celular: str, plano: str, cpf: str, senha_padrao: str = "123456") -> None:
+def enviar_whatsapp_chatpro(nome: str, celular: str, plano: str, cpf: str, senha_padrao: str = "1234567") -> None:
     """Envia uma mensagem de boas-vindas via ChatPro."""
     if not CHATPRO_TOKEN or not CHATPRO_URL:
         enviar_log_discord("⚠️ Variáveis do ChatPro não configuradas. Mensagem não enviada.")
@@ -264,7 +264,7 @@ async def _process_webhook(payload: dict):
 
         dados_aluno_om = {
             "token": TOKEN_UNIDADE, "nome": nome, "data_nascimento": "2000-01-01",
-            "email": email, "fone": celular, "senha": "123456", "celular": celular,
+            "email": email, "fone": celular, "senha": "1234567", "celular": celular,
             "doc_cpf": cpf, "doc_rg": "0", "pais": "Brasil", "uf": customer.get("state", ""),
             "cidade": customer.get("city", ""), "endereco": f"{customer.get('street', '')}, {customer.get('number', '')}",
             "complemento": customer.get("complement", ""), "bairro": customer.get("neighborhood", ""), "cep": customer.get("zipcode", ""),

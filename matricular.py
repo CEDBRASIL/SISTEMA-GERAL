@@ -181,7 +181,7 @@ def _cadastrar_aluno_om(
     email: Optional[str],
     cursos_ids: List[int],
     token_key: str,
-    senha_padrao: str = "123456"
+    senha_padrao: str = "1234567"
 ) -> Tuple[str, str]:
     """
     Cadastra aluno e, se houver cursos_ids, matricula nas disciplinas.
