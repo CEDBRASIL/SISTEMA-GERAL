@@ -16,8 +16,8 @@ except Exception:  # pragma: no cover - fallback if not available
 
 ASAAS_KEY = os.getenv("ASAAS_KEY")
 ASAAS_BASE_URL = os.getenv("ASAAS_BASE_URL")
-CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
-CHATPRO_URL = os.getenv("CHATPRO_URL")
+# Endpoint do WhatsApp (não requer token)
+WHATSAPP_URL = "https://whatsapptest-stij.onrender.com/send"
 
 @router.post("/matricularasaas")
 async def matricular_asaas(data: dict):
@@ -53,12 +53,11 @@ async def asaas_webhook(req: Request):
         raise HTTPException(500, detail=str(e))
 
     try:
-        requests.post(
-            f"{CHATPRO_URL}/sendMessage",
-            headers={"Authorization": f"Bearer {CHATPRO_TOKEN}"},
-            json={
-                "to": phone,
-                "message": f"Olá {nome}, sua matrícula foi confirmada com sucesso!"
+        requests.get(
+            WHATSAPP_URL,
+            params={
+                "para": phone,
+                "mensagem": f"Olá {nome}, sua matrícula foi confirmada com sucesso!"
             },
             timeout=10,
         )

@@ -16,8 +16,8 @@ router = APIRouter()
 # --- Configuração de Variáveis de Ambiente ---
 OM_BASE = os.getenv("OM_BASE")
 BASIC_B64 = os.getenv("BASIC_B64")
-CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
-CHATPRO_URL = os.getenv("CHATPRO_URL")
+# Endpoint do WhatsApp (não requer token)
+WHATSAPP_URL = "https://whatsapptest-stij.onrender.com/send"
 UNIDADE_ID = os.getenv("UNIDADE_ID")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 
@@ -101,10 +101,7 @@ def buscar_aluno_por_cpf(cpf: str) -> str | None:
         return None
 
 def enviar_whatsapp_chatpro(nome: str, celular: str, plano: str, cpf: str, senha_padrao: str = "1234567") -> None:
-    """Envia uma mensagem de boas-vindas via ChatPro."""
-    if not CHATPRO_TOKEN or not CHATPRO_URL:
-        enviar_log_discord("⚠️ Variáveis do ChatPro não configuradas. Mensagem não enviada.")
-        return
+    """Envia uma mensagem de boas-vindas via WhatsApp."""
 
     numero_telefone = "".join(filter(str.isdigit, celular))
 
@@ -120,14 +117,12 @@ def enviar_whatsapp_chatpro(nome: str, celular: str, plano: str, cpf: str, senha
         f"Qualquer dúvida, estamos à disposição. Boa jornada de estudos! 🚀"
     )
 
-    payload = {"number": numero_telefone, "message": mensagem}
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "Authorization": CHATPRO_TOKEN,
-    }
     try:
-        r = requests.post(CHATPRO_URL, json=payload, headers=headers, timeout=10)
+        r = requests.get(
+            WHATSAPP_URL,
+            params={"para": numero_telefone, "mensagem": mensagem},
+            timeout=10,
+        )
         if r.ok:
             enviar_log_discord(f"✅ WhatsApp enviado para {numero_telefone}. Resposta: {r.text}")
         else:
