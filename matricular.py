@@ -13,9 +13,8 @@ BASIC_B64 = os.getenv("BASIC_B64")
 UNIDADE_ID = os.getenv("UNIDADE_ID")
 OM_BASE = os.getenv("OM_BASE")
 
-# Variáveis de ambiente para ChatPro
-CHATPRO_TOKEN = os.getenv("CHATPRO_TOKEN")
-CHATPRO_URL = os.getenv("CHATPRO_URL")  # ex.: "https://v5.chatpro.com.br/chatpro-h9bsk4dljx/api/v1/send_message"
+# Endpoint do WhatsApp (não requer token)
+WHATSAPP_URL = "https://whatsapptest-stij.onrender.com/send"
 
 # ** CONSTANTE DO WEBHOOK DISCORD **
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1377838283975036928/IgVvwyrBBWflKyXbIU9dgH4PhLwozHzrf-nJpj3w7dsZC-Ds9qN8_Toym3Tnbj-3jdU4"
@@ -211,9 +210,7 @@ def _send_whatsapp_chatpro(
     Envia mensagem automática no WhatsApp via ChatPro, com boas-vindas,
     informações de cursos e credenciais de acesso (CPF e senha).
     """
-    if not all([CHATPRO_TOKEN, CHATPRO_URL]):
-        _log("⚠️ Variáveis de ambiente do ChatPro não configuradas. Pulando envio de WhatsApp.")
-        return
+    # Novo endpoint não requer token ou configuração adicional
 
     # Garante que o número seja somente dígitos (sem parênteses, espaços ou traços)
     numero_telefone = "".join(filter(str.isdigit, whatsapp))
@@ -234,32 +231,19 @@ def _send_whatsapp_chatpro(
         f"Qualquer dúvida, estamos à disposição. Boa jornada de estudos! 🚀"
     )
 
-    # Monta o payload conforme a API real do ChatPro
-    payload = {
-        "number": numero_telefone,
-        "message": mensagem
-    }
-
-    # Cabeçalhos corretos: Content-Type e Authorization
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "Authorization": CHATPRO_TOKEN
-    }
-
+    # Envia a mensagem utilizando o novo endpoint
     try:
-        r = requests.post(
-            CHATPRO_URL,
-            json=payload,
-            headers=headers,
+        r = requests.get(
+            WHATSAPP_URL,
+            params={"para": numero_telefone, "mensagem": mensagem},
             timeout=10
         )
         if r.ok:
-            _log(f"[CHATPRO] Mensagem enviada com sucesso para {numero_telefone}. Resposta: {r.text}")
+            _log(f"[WHATSAPP] Mensagem enviada com sucesso para {numero_telefone}. Resposta: {r.text}")
         else:
-            _log(f"[CHATPRO] Falha ao enviar mensagem para {numero_telefone}. HTTP {r.status_code} | {r.text}")
+            _log(f"[WHATSAPP] Falha ao enviar mensagem para {numero_telefone}. HTTP {r.status_code} | {r.text}")
     except Exception as e:
-        _log(f"[CHATPRO] Erro inesperado ao enviar WhatsApp para {numero_telefone}: {str(e)}")
+        _log(f"[WHATSAPP] Erro inesperado ao enviar WhatsApp para {numero_telefone}: {str(e)}")
 
 def _send_discord_log(
     nome: str,
