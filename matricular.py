@@ -23,9 +23,11 @@ DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1377838283975036928/IgVv
 CPF_PREFIXO = "20254158"
 cpf_lock = threading.Lock()
 
+
 def _log(msg: str):
     agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{agora}] {msg}")
+
 
 def _obter_token_unidade() -> str:
     """
@@ -34,42 +36,33 @@ def _obter_token_unidade() -> str:
     if not all([OM_BASE, BASIC_B64, UNIDADE_ID]):
         raise RuntimeError("Variáveis de ambiente OM não configuradas.")
     url = f"{OM_BASE}/unidades/token/{UNIDADE_ID}"
-    r = requests.get(
-        url,
-        headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=8
-    )
+    r = requests.get(url, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
     if r.ok and r.json().get("status") == "true":
         return r.json()["data"]["token"]
     raise RuntimeError(f"Falha ao obter token da unidade: HTTP {r.status_code}")
+
 
 def _total_alunos() -> int:
     """
     Retorna o total de alunos cadastrados na unidade OM (para gerar CPF).
     """
     url = f"{OM_BASE}/alunos/total/{UNIDADE_ID}"
-    r = requests.get(
-        url,
-        headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=8
-    )
+    r = requests.get(url, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
     if r.ok and r.json().get("status") == "true":
         return int(r.json()["data"]["total"])
 
     # Fallback: busca todos que tenham CPF começando com o prefixo
     url2 = f"{OM_BASE}/alunos?unidade_id={UNIDADE_ID}&cpf_like={CPF_PREFIXO}"
-    r2 = requests.get(
-        url2,
-        headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=8
-    )
+    r2 = requests.get(url2, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
     if r2.ok and r2.json().get("status") == "true":
         return len(r2.json()["data"])
 
     raise RuntimeError("Falha ao apurar total de alunos")
 
+
 # Melhorias na geração de CPF
 CPF_MAX_RETRIES = 100  # Limite de tentativas para evitar colisões
+
 
 def _proximo_cpf(incremento: int = 0) -> str:
     """
@@ -83,26 +76,24 @@ def _proximo_cpf(incremento: int = 0) -> str:
                 return cpf
         raise RuntimeError("Limite de tentativas para gerar CPF excedido.")
 
+
 def _cpf_em_uso(cpf: str) -> bool:
     """
     Verifica se o CPF já está em uso na base de dados da OM.
     """
     url = f"{OM_BASE}/alunos?unidade_id={UNIDADE_ID}&cpf={cpf}"
-    r = requests.get(
-        url,
-        headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=8
-    )
+    r = requests.get(url, headers={"Authorization": f"Basic {BASIC_B64}"}, timeout=8)
     if r.ok and r.json().get("status") == "true":
         return len(r.json().get("data", [])) > 0
     return False
+
 
 def _cadastrar_somente_aluno(
     nome: str,
     whatsapp: str,
     email: Optional[str],
     token_key: str,
-    senha_padrao: str = "1234567"
+    senha_padrao: str = "1234567",
 ) -> Tuple[str, str]:
     """
     Cadastra apenas o aluno na OM (gera e-mail dummy se não for fornecido).
@@ -138,9 +129,11 @@ def _cadastrar_somente_aluno(
             f"{OM_BASE}/alunos",
             data=payload,
             headers={"Authorization": f"Basic {BASIC_B64}"},
-            timeout=10
+            timeout=10,
         )
-        _log(f"[CAD] Tentativa {tentativa+1}/60 | Status {r.status_code} | Retorno OM: {r.text}")
+        _log(
+            f"[CAD] Tentativa {tentativa+1}/60 | Status {r.status_code} | Retorno OM: {r.text}"
+        )
 
         if r.ok and r.json().get("status") == "true":
             aluno_id = r.json()["data"]["id"]
@@ -151,6 +144,7 @@ def _cadastrar_somente_aluno(
             break
 
     raise RuntimeError("Falha ao cadastrar o aluno")
+
 
 def _matricular_aluno_om(aluno_id: str, cursos_ids: List[int], token_key: str) -> bool:
     """
@@ -168,11 +162,14 @@ def _matricular_aluno_om(aluno_id: str, cursos_ids: List[int], token_key: str) -
         f"{OM_BASE}/alunos/matricula/{aluno_id}",
         data=payload,
         headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=10
+        timeout=10,
     )
     sucesso = r.ok and r.json().get("status") == "true"
-    _log(f"[MAT] {'✅' if sucesso else '❌'} Status {r.status_code} | Retorno OM: {r.text}")
+    _log(
+        f"[MAT] {'✅' if sucesso else '❌'} Status {r.status_code} | Retorno OM: {r.text}"
+    )
     return sucesso
+
 
 def _cadastrar_aluno_om(
     nome: str,
@@ -180,31 +177,38 @@ def _cadastrar_aluno_om(
     email: Optional[str],
     cursos_ids: List[int],
     token_key: str,
-    senha_padrao: str = "1234567"
+    senha_padrao: str = "1234567",
 ) -> Tuple[str, str]:
     """
     Cadastra aluno e, se houver cursos_ids, matricula nas disciplinas.
     Retorna: (aluno_id, cpf).
     """
     # 1) Cadastro básico do aluno
-    aluno_id, cpf = _cadastrar_somente_aluno(nome, whatsapp, email, token_key, senha_padrao)
+    aluno_id, cpf = _cadastrar_somente_aluno(
+        nome, whatsapp, email, token_key, senha_padrao
+    )
 
     # 2) Se houver cursos_ids, realiza a matrícula
     if cursos_ids:
         ok_matri = _matricular_aluno_om(aluno_id, cursos_ids, token_key)
         if not ok_matri:
-            raise RuntimeError("Aluno cadastrado, mas falha ao matricular em disciplinas.")
+            raise RuntimeError(
+                "Aluno cadastrado, mas falha ao matricular em disciplinas."
+            )
     else:
-        _log(f"[MAT] Curso não informado para {nome}. Cadastro concluído sem matrícula.")
+        _log(
+            f"[MAT] Curso não informado para {nome}. Cadastro concluído sem matrícula."
+        )
 
     return aluno_id, cpf
+
 
 def _send_whatsapp_chatpro(
     nome: str,
     whatsapp: str,
     cursos_nomes: List[str],
     cpf: str,
-    senha_padrao: str = "1234567"
+    senha_padrao: str = "1234567",
 ) -> None:
     """
     Envia mensagem automática no WhatsApp via ChatPro, com boas-vindas,
@@ -212,11 +216,17 @@ def _send_whatsapp_chatpro(
     """
     # Novo endpoint não requer token ou configuração adicional
 
-    # Garante que o número seja somente dígitos (sem parênteses, espaços ou traços)
-    numero_telefone = "".join(filter(str.isdigit, whatsapp))
+    # Garante o DDI 55 e remove qualquer caractere não numérico
+    from utils import fix_whatsapp_number
+
+    numero_telefone = fix_whatsapp_number(whatsapp)
 
     # Monta a mensagem com emojis e credenciais
-    cursos_texto = "\n".join(f"• {c}" for c in cursos_nomes) if cursos_nomes else "Nenhum curso específico."
+    cursos_texto = (
+        "\n".join(f"• {c}" for c in cursos_nomes)
+        if cursos_nomes
+        else "Nenhum curso específico."
+    )
     mensagem = (
         f"👋 Olá, {nome}!\n\n"
         f"🎉 Seja bem-vindo(a) ao CED BRASIL!\n\n"
@@ -236,20 +246,24 @@ def _send_whatsapp_chatpro(
         r = requests.get(
             WHATSAPP_URL,
             params={"para": numero_telefone, "mensagem": mensagem},
-            timeout=10
+            timeout=10,
         )
         if r.ok:
-            _log(f"[WHATSAPP] Mensagem enviada com sucesso para {numero_telefone}. Resposta: {r.text}")
+            _log(
+                f"[WHATSAPP] Mensagem enviada com sucesso para {numero_telefone}. Resposta: {r.text}"
+            )
         else:
-            _log(f"[WHATSAPP] Falha ao enviar mensagem para {numero_telefone}. HTTP {r.status_code} | {r.text}")
+            _log(
+                f"[WHATSAPP] Falha ao enviar mensagem para {numero_telefone}. HTTP {r.status_code} | {r.text}"
+            )
     except Exception as e:
-        _log(f"[WHATSAPP] Erro inesperado ao enviar WhatsApp para {numero_telefone}: {str(e)}")
+        _log(
+            f"[WHATSAPP] Erro inesperado ao enviar WhatsApp para {numero_telefone}: {str(e)}"
+        )
+
 
 def _send_discord_log(
-    nome: str,
-    cpf: str,
-    whatsapp: str,
-    cursos_ids: List[int]
+    nome: str, cpf: str, whatsapp: str, cursos_ids: List[int]
 ) -> None:
     """
     Envia mensagem de log para o canal Discord via webhook.
@@ -273,16 +287,10 @@ def _send_discord_log(
         f"🎓 Cursos: {cursos_ids}"
     )
 
-    payload = {
-        "content": mensagem_discord
-    }
+    payload = {"content": mensagem_discord}
 
     try:
-        r = requests.post(
-            DISCORD_WEBHOOK_URL,
-            json=payload,
-            timeout=10
-        )
+        r = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
         if r.ok:
             _log(f"[DISCORD] Log enviado com sucesso. Resposta: {r.text}")
         else:
@@ -290,7 +298,11 @@ def _send_discord_log(
     except Exception as e:
         _log(f"[DISCORD] Erro inesperado ao enviar log: {str(e)}")
 
-@router.post("/", summary="Cadastra (e opcionalmente matricula) um aluno na OM e envia WhatsApp via ChatPro")
+
+@router.post(
+    "/",
+    summary="Cadastra (e opcionalmente matricula) um aluno na OM e envia WhatsApp via ChatPro",
+)
 async def realizar_matricula(dados: dict):
     """
     Espera um JSON com:
@@ -309,7 +321,7 @@ async def realizar_matricula(dados: dict):
     if not nome or not whatsapp:
         raise HTTPException(
             status_code=400,
-            detail="Dados incompletos: 'nome' e 'whatsapp' são obrigatórios."
+            detail="Dados incompletos: 'nome' e 'whatsapp' são obrigatórios.",
         )
 
     cursos_ids: List[int] = []
@@ -317,11 +329,13 @@ async def realizar_matricula(dados: dict):
         cursos_ids = cursos_ids_input
     else:
         for nome_curso in cursos_nomes:
-            chave = next((k for k in CURSOS_OM if k.lower() == nome_curso.lower()), None)
+            chave = next(
+                (k for k in CURSOS_OM if k.lower() == nome_curso.lower()), None
+            )
             if not chave:
                 raise HTTPException(
                     status_code=404,
-                    detail=f"Curso '{nome_curso}' não encontrado no mapeamento."
+                    detail=f"Curso '{nome_curso}' não encontrado no mapeamento.",
                 )
             cursos_ids.extend(CURSOS_OM[chave])
 
@@ -330,7 +344,9 @@ async def realizar_matricula(dados: dict):
         token_unit = _obter_token_unidade()
 
         # 2) cadastra aluno e matricula
-        aluno_id, cpf = _cadastrar_aluno_om(nome, whatsapp, email, cursos_ids, token_unit)
+        aluno_id, cpf = _cadastrar_aluno_om(
+            nome, whatsapp, email, cursos_ids, token_unit
+        )
 
         # 3) envia mensagem automática no WhatsApp via ChatPro (agora com login e senha)
         _send_whatsapp_chatpro(nome, whatsapp, cursos_nomes, cpf)
@@ -351,4 +367,7 @@ async def realizar_matricula(dados: dict):
 
     except Exception as e:
         _log(f"❌ Erro inesperado em /matricular: {str(e)}")
-        raise HTTPException(status_code=500, detail="Erro inesperado. Consulte os logs para mais detalhes.")
+        raise HTTPException(
+            status_code=500,
+            detail="Erro inesperado. Consulte os logs para mais detalhes.",
+        )

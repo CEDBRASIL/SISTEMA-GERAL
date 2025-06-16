@@ -1,8 +1,9 @@
 import os
 from fastapi import Request, HTTPException, APIRouter
 import requests
+from utils import fix_whatsapp_number
 
-# CHAMADA ROUTER 
+# CHAMADA ROUTER
 
 router = APIRouter()
 
@@ -10,14 +11,17 @@ router = APIRouter()
 try:
     from matricular import matricular  # type: ignore
 except Exception:  # pragma: no cover - fallback if not available
+
     def matricular(**kwargs):
         """Fallback matricular implementation."""
         print("Matricular called with", kwargs)
+
 
 ASAAS_KEY = os.getenv("ASAAS_KEY")
 ASAAS_BASE_URL = os.getenv("ASAAS_BASE_URL")
 # Endpoint do WhatsApp (não requer token)
 WHATSAPP_URL = "https://whatsapptest-stij.onrender.com/send"
+
 
 @router.post("/matricularasaas")
 async def matricular_asaas(data: dict):
@@ -35,6 +39,7 @@ async def matricular_asaas(data: dict):
     # Pré-matrícula opcional poderia ser registrada aqui
 
     return {"status": "ok"}
+
 
 @router.post("/webhooks/asaas")
 async def asaas_webhook(req: Request):
@@ -56,8 +61,8 @@ async def asaas_webhook(req: Request):
         requests.get(
             WHATSAPP_URL,
             params={
-                "para": phone,
-                "mensagem": f"Olá {nome}, sua matrícula foi confirmada com sucesso!"
+                "para": fix_whatsapp_number(phone),
+                "mensagem": f"Olá {nome}, sua matrícula foi confirmada com sucesso!",
             },
             timeout=10,
         )
