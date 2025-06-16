@@ -19,6 +19,28 @@ CURSOS_OM: Dict[str, List[int]] = {
     "None": [129, 198, 156, 154],
 }
 
+
+def obter_nomes_por_ids(ids: List[int]) -> List[str]:
+    """Retorna os nomes de cursos correspondentes aos IDs fornecidos."""
+    if not ids:
+        return []
+
+    ids_set = set(ids)
+
+    # Verifica se existe algum curso com conjunto de IDs exatamente igual
+    nomes_exatos = [n for n, lista in CURSOS_OM.items() if set(lista) == ids_set]
+    if nomes_exatos:
+        return nomes_exatos
+
+    # Caso contrário, inclui nomes de cursos que contenham qualquer um dos IDs
+    nomes: List[str] = []
+    for cid in ids:
+        for nome, lista in CURSOS_OM.items():
+            if cid in lista and nome not in nomes:
+                nomes.append(nome)
+
+    return nomes
+
 # Aceita /cursos e /cursos/
 @router.get("", summary="Lista de cursos disponíveis")
 @router.get("/", summary="Lista de cursos disponíveis")

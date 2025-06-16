@@ -5,7 +5,7 @@ import requests
 from fastapi import APIRouter, HTTPException
 from utils import formatar_numero_whatsapp
 from datetime import datetime
-from cursos import CURSOS_OM  # Importa o dicionário de mapeamento
+from cursos import CURSOS_OM, obter_nomes_por_ids  # Importa o dicionário de mapeamento e utilitário
 
 router = APIRouter()
 
@@ -369,6 +369,8 @@ async def realizar_matricula(dados: dict):
     cursos_ids: List[int] = []
     if cursos_ids_input:
         cursos_ids = cursos_ids_input
+        if not cursos_nomes:
+            cursos_nomes = obter_nomes_por_ids(cursos_ids_input)
     else:
         for nome_curso in cursos_nomes:
             chave = next((k for k in CURSOS_OM if k.lower() == nome_curso.lower()), None)
