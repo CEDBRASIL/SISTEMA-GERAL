@@ -10,6 +10,7 @@ import alunos
 import deletar
 import kiwify
 import matricularasaas
+import cobrar
 import bloquear
 import login
 from app import whatsapp
@@ -52,6 +53,7 @@ app.include_router(matricular.router, prefix="/matricular", tags=["Matrícula"])
 app.include_router(alunos.router,     prefix="/alunos",     tags=["Alunos"])
 app.include_router(kiwify.router,     prefix="/kiwify", tags=["Kiwify"])
 app.include_router(matricularasaas.router,  tags=["Matrícula Assas"])
+app.include_router(cobrar.router)
 app.include_router(deletar.router,    tags=["Excluir Aluno"])
 app.include_router(bloquear.router,   tags=["Bloqueio"])
 app.include_router(login.router,      prefix="/login",     tags=["Login"])

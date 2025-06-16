@@ -35,3 +35,20 @@ python bloquear.py 123 0
 
 Isso envia a solicitação correspondente à API configurada por meio das variáveis de ambiente `OM_BASE`, `BASIC_B64` e `UNIDADE_ID`.
 
+## Nova rota de cobrança
+
+É possível gerar cobranças usando a integração com o ASAAS. Configure as variáveis `ASAAS_KEY` e `ASAAS_BASE_URL` e utilize a rota:
+
+```bash
+POST /cobrar
+{
+  "customer": "ID do cliente ASAAS",
+  "value": 123.45,
+  "dueDate": "2025-12-31",
+  "billingType": "BOLETO",
+  "description": "Cobrança"
+}
+```
+
+O endpoint retorna o JSON da API do ASAAS ou gera erro em caso de falha.
+
