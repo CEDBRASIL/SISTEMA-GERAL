@@ -10,6 +10,10 @@ from utils import formatar_numero_whatsapp
 from matricular import realizar_matricula
 from cursos import CURSOS_OM
 
+# Conjunto com todos os IDs de cursos válidos, usado para validar
+# o campo `externalReference` recebido no webhook
+VALID_CURSO_IDS = {cid for ids in CURSOS_OM.values() for cid in ids}
+
 router = APIRouter(prefix="/asaas", tags=["Matrícula Assas"])
 
 ASAAS_KEY = os.getenv("ASAAS_KEY")
@@ -243,15 +247,25 @@ async def webhook(req: Request):
         return {"status": "ignored"}
 
     cursos_ref = payment.get("externalReference", "")
-    cursos_ids = [int(x) for x in cursos_ref.split(",") if x.isdigit()]
-    descricao = payment.get("description") or "Curso"
+    descricao = (payment.get("description") or "").strip()
 
-    # Caso nenhum ID seja fornecido, tenta mapear a descricao para os IDs
-    if not cursos_ids:
+    cursos_ids: List[int] = []
+
+    # Prioriza sempre a descrição para localizar o curso correto
+    if descricao:
         for nome_curso, ids in CURSOS_OM.items():
             if nome_curso.lower() == descricao.lower():
                 cursos_ids = ids
                 break
+
+    # Caso a descrição não mapeie nenhum curso, verifica o externalReference
+    if not cursos_ids and cursos_ref:
+        for ref in cursos_ref.split(","):
+            ref = ref.strip()
+            if ref.isdigit():
+                cid = int(ref)
+                if cid in VALID_CURSO_IDS:
+                    cursos_ids.append(cid)
 
     c = requests.get(
         f"{ASAAS_BASE_URL}/customers/{customer_id}", headers=_headers(), timeout=10
