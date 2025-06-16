@@ -90,6 +90,9 @@ def criar_assinatura(dados: dict):
     valor = dados.get("valor")
     descricao = dados.get("descricao") or dados.get("curso") or "Curso"
     cursos_ids: List[int] = dados.get("cursos_ids") or []
+    billing_type = dados.get("billingType") or os.getenv("ASAAS_BILLING_TYPE", "UNDEFINED")
+    callback_url = os.getenv("ASAAS_CALLBACK_URL")
+    redirect_url = os.getenv("ASAAS_REDIRECT_URL")
 
     if not nome or not cpf or not phone or not valor:
         raise HTTPException(400, "Campos obrigatórios ausentes")
@@ -98,24 +101,30 @@ def criar_assinatura(dados: dict):
 
     payload = {
         "customer": customer_id,
-        "billingType": "UNDEFINED",
+        "billingType": billing_type,
         "value": valor,
-        "cycle": "MONTHLY",
         "description": descricao,
-        "nextDueDate": date.today().isoformat(),
+        "dueDate": date.today().isoformat(),
         "externalReference": ",".join(map(str, cursos_ids)),
     }
+    if callback_url:
+        payload["callbackUrl"] = callback_url
+    if redirect_url:
+        payload["redirectUrl"] = redirect_url
+
     try:
-        r = requests.post(f"{ASAAS_BASE_URL}/subscriptions", json=payload, headers=_headers(), timeout=10)
+        r = requests.post(f"{ASAAS_BASE_URL}/payments", json=payload, headers=_headers(), timeout=10)
     except requests.RequestException as e:
         raise HTTPException(502, f"Erro de conexão: {e}")
 
     if not r.ok:
         raise HTTPException(r.status_code, r.text)
 
-    url = r.json().get("invoiceUrl") or r.json().get("bankSlipUrl")
+    data = r.json()
+    url = data.get("invoiceUrl") or data.get("bankSlipUrl") or data.get("transactionReceiptUrl")
 
-    _enviar_whatsapp_checkout(nome, phone, url)
+    if url:
+        _enviar_whatsapp_checkout(nome, phone, url)
 
     return {
         "url": url,
