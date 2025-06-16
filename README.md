@@ -78,3 +78,8 @@ acima. Por padrão a cobrança é criada com `billingType="UNDEFINED"`, permitin
 que o aluno escolha entre boleto, PIX ou cartão. O link de pagamento também é
 enviado automaticamente via WhatsApp.
 
+### Regras de matrícula via ASAAS
+
+1. O aluno é sempre cadastrado usando o **CPF informado** na compra.
+2. Pagamentos recorrentes não geram nova matrícula quando o CPF já existir na OM.
+
