@@ -65,12 +65,11 @@ def _enviar_whatsapp(nome: str, phone: str, login: str, modulo: str) -> None:
 
 def _enviar_whatsapp_checkout(nome: str, phone: str, url: str) -> None:
     mensagem = (
-        f"Olá {nome} Tudo bem?\n\n"
-        "Voce esta a um passo de transformar o seu futuro!\n"
-        "Só falta você finalizar o seu pagamento!\n"
-        "Enviamos no seu SMS\n"
-        f"Ou Pelo link: {url}\n\n"
-        "Qualquer coisa, estou a disposição para ajudar :)"
+        f"👋 Olá {nome}, tudo bem?\n\n"
+        f"Segue o link para pagamento do seu curso: {url}\n"
+        "Também enviamos este link via SMS.\n"
+        "Assim que o pagamento for confirmado, enviaremos seus dados de acesso.\n\n"
+        "Qualquer dúvida, estou à disposição para ajudar!"
     )
     try:
         requests.get(
