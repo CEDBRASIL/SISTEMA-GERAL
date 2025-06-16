@@ -15,6 +15,8 @@ OM_BASE = os.getenv("OM_BASE")
 
 # Endpoint do WhatsApp (não requer token)
 WHATSAPP_URL = "https://whatsapptest-stij.onrender.com/send"
+# Número para receber logs via WhatsApp
+WHATSAPP_LOG_NUM = os.getenv("WHATSAPP_LOG_NUM", "556186660241")
 
 # ** CONSTANTE DO WEBHOOK DISCORD **
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1377838283975036928/IgVvwyrBBWflKyXbIU9dgH4PhLwozHzrf-nJpj3w7dsZC-Ds9qN8_Toym3Tnbj-3jdU4"
@@ -245,6 +247,22 @@ def _send_whatsapp_chatpro(
     except Exception as e:
         _log(f"[WHATSAPP] Erro inesperado ao enviar WhatsApp para {numero_telefone}: {str(e)}")
 
+def _send_whatsapp_log(mensagem: str) -> None:
+    """Envia mensagem de log para o WhatsApp, exceto para renovação de token."""
+    if "Token de unidade atualizado" in mensagem:
+        return
+    numero = "".join(filter(str.isdigit, WHATSAPP_LOG_NUM))
+    if not numero:
+        return
+    try:
+        requests.get(
+            WHATSAPP_URL,
+            params={"para": numero, "mensagem": mensagem},
+            timeout=10,
+        )
+    except Exception as e:
+        _log(f"[WHATSAPP-LOG] Erro ao enviar log: {str(e)}")
+
 def _send_discord_log(
     nome: str,
     cpf: str,
@@ -257,7 +275,7 @@ def _send_discord_log(
     ✅ MATRÍCULA REALIZADA COM SUCESSO
     👤 Nome: Yuri Rodrigues de Sousa
     📄 CPF: 10539354120
-    📱 Celular: +5561986660241
+    📱 Celular: +556186660241
     🎓 Cursos: [130, 599, 161, 160, 162]
     """
     if not DISCORD_WEBHOOK_URL:
@@ -276,6 +294,8 @@ def _send_discord_log(
     payload = {
         "content": mensagem_discord
     }
+
+    _send_whatsapp_log(mensagem_discord)
 
     try:
         r = requests.post(
