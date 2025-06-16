@@ -121,7 +121,12 @@ def criar_assinatura(dados: dict):
         raise HTTPException(r.status_code, r.text)
 
     data = r.json()
-    url = data.get("invoiceUrl") or data.get("bankSlipUrl") or data.get("transactionReceiptUrl")
+    url = (
+        data.get("chargeUrl")
+        or data.get("invoiceUrl")
+        or data.get("bankSlipUrl")
+        or data.get("transactionReceiptUrl")
+    )
 
     if url:
         _enviar_whatsapp_checkout(nome, phone, url)
@@ -140,8 +145,8 @@ def criar_assinatura_recorrente(dados: dict):
     valor = dados.get("valor")
     descricao = dados.get("descricao") or "Assinatura"
     cursos_ids: List[int] = dados.get("cursos_ids") or []
-    billing_type = dados.get("billingType") or os.getenv("ASAAS_BILLING_TYPE", "UNDEFINED")
-    cycle = dados.get("cycle") or "MONTHLY"
+    billing_type = dados.get("billingType") or "PIX"
+    cycle = dados.get("ciclo") or dados.get("cycle") or "MONTHLY"
     next_due = dados.get("dueDate") or date.today().isoformat()
     callback_url = os.getenv("ASAAS_CALLBACK_URL")
     redirect_url = os.getenv("ASAAS_REDIRECT_URL")
@@ -174,7 +179,12 @@ def criar_assinatura_recorrente(dados: dict):
         raise HTTPException(r.status_code, r.text)
 
     data = r.json()
-    url = data.get("invoiceUrl") or data.get("bankSlipUrl") or data.get("transactionReceiptUrl")
+    url = (
+        data.get("chargeUrl")
+        or data.get("invoiceUrl")
+        or data.get("bankSlipUrl")
+        or data.get("transactionReceiptUrl")
+    )
 
     if url:
         _enviar_whatsapp_checkout(nome, phone, url)
