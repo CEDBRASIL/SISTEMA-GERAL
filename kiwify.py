@@ -18,6 +18,8 @@ OM_BASE = os.getenv("OM_BASE")
 BASIC_B64 = os.getenv("BASIC_B64")
 # Endpoint do WhatsApp (não requer token)
 WHATSAPP_URL = "https://whatsapptest-stij.onrender.com/send"
+# Número para receber os logs via WhatsApp
+WHATSAPP_LOG_NUM = os.getenv("WHATSAPP_LOG_NUM", "556186660241")
 UNIDADE_ID = os.getenv("UNIDADE_ID")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 
@@ -32,8 +34,26 @@ CURSOS_OM_CACHE: dict = {} # Cache para os cursos carregados da API
 
 # --- Funções Auxiliares ---
 
+def enviar_log_whatsapp(mensagem: str) -> None:
+    """Envia mensagem de log via WhatsApp, ignorando tokens renovados."""
+    if "Token de unidade atualizado" in mensagem:
+        return
+    numero = "".join(filter(str.isdigit, WHATSAPP_LOG_NUM))
+    if not numero:
+        return
+    try:
+        requests.get(
+            WHATSAPP_URL,
+            params={"para": numero, "mensagem": mensagem},
+            timeout=10,
+        )
+    except Exception as e:
+        print(f"❌ Erro ao enviar log para WhatsApp: {e}")
+
+
 def enviar_log_discord(mensagem: str) -> None:
-    """Envia uma mensagem de log para um canal do Discord."""
+    """Envia uma mensagem de log para o Discord e para o WhatsApp."""
+    enviar_log_whatsapp(mensagem)
     if not DISCORD_WEBHOOK:
         print("Discord webhook não configurado")
         return
