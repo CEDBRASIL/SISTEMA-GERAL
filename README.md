@@ -71,3 +71,10 @@ POST /asaas/assinatura
 
 O retorno inclui o `subscription` gerado pelo ASAAS e o link para pagamento.
 
+### Checkout único
+
+Envie um JSON para `POST /asaas/checkout` contendo os mesmos campos do exemplo
+acima. Por padrão a cobrança é criada com `billingType="UNDEFINED"`, permitindo
+que o aluno escolha entre boleto, PIX ou cartão. O link de pagamento também é
+enviado automaticamente via WhatsApp.
+
