@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import date
 from typing import List
 
@@ -16,6 +17,9 @@ ASAAS_BASE_URL = os.getenv("ASAAS_BASE_URL", "https://api.asaas.com/v3")
 WHATSAPP_URL = "https://whatsapptest-stij.onrender.com/send"
 SENHA_PADRAO = os.getenv("SENHA_PADRAO", "1234567")
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def _headers() -> dict:
     if not ASAAS_KEY:
@@ -26,17 +30,27 @@ def _headers() -> dict:
 def _criar_ou_obter_cliente(nome: str, cpf: str, phone: str) -> str:
     payload = {"name": nome, "cpfCnpj": cpf, "mobilePhone": phone}
     try:
-        r = requests.post(f"{ASAAS_BASE_URL}/customers", json=payload, headers=_headers(), timeout=10)
+        r = requests.post(
+            f"{ASAAS_BASE_URL}/customers", json=payload, headers=_headers(), timeout=10
+        )
     except requests.RequestException as e:
         raise HTTPException(502, f"Erro de conexão: {e}")
 
     if r.status_code == 409:
-        s = requests.get(f"{ASAAS_BASE_URL}/customers?cpfCnpj={cpf}", headers=_headers(), timeout=10)
+        s = requests.get(
+            f"{ASAAS_BASE_URL}/customers?cpfCnpj={cpf}",
+            headers=_headers(),
+            timeout=10,
+        )
         if s.ok and s.json().get("data"):
-            return s.json()["data"][0]["id"]
+            cid = s.json()["data"][0]["id"]
+            logger.info("Cliente existente encontrado: %s", cid)
+            return cid
         raise HTTPException(s.status_code, s.text)
     if r.ok:
-        return r.json().get("id")
+        cid = r.json().get("id")
+        logger.info("Novo cliente criado: %s", cid)
+        return cid
     raise HTTPException(r.status_code, r.text)
 
 
@@ -54,13 +68,15 @@ def _enviar_whatsapp(nome: str, phone: str, login: str, modulo: str) -> None:
         f"🚀 Bons estudos! Qualquer dúvida, conte com a nossa equipe!"
     )
     try:
-        requests.get(
+        r = requests.get(
             WHATSAPP_URL,
             params={"para": formatar_numero_whatsapp(phone), "mensagem": mensagem},
             timeout=10,
         )
+        r.raise_for_status()
+        logger.info("WhatsApp enviado para %s", phone)
     except Exception:
-        pass
+        logger.exception("Erro ao enviar mensagem via WhatsApp")
 
 
 def _enviar_whatsapp_checkout(nome: str, phone: str, url: str) -> None:
@@ -72,13 +88,15 @@ def _enviar_whatsapp_checkout(nome: str, phone: str, url: str) -> None:
         "Qualquer dúvida, estou à disposição para ajudar!"
     )
     try:
-        requests.get(
+        r = requests.get(
             WHATSAPP_URL,
             params={"para": formatar_numero_whatsapp(phone), "mensagem": mensagem},
             timeout=10,
         )
+        r.raise_for_status()
+        logger.info("WhatsApp de checkout enviado para %s", phone)
     except Exception:
-        pass
+        logger.exception("Erro ao enviar mensagem de checkout via WhatsApp")
 
 
 @router.post("/checkout")
@@ -89,7 +107,9 @@ def criar_assinatura(dados: dict):
     valor = dados.get("valor")
     descricao = dados.get("descricao") or dados.get("curso") or "Curso"
     cursos_ids: List[int] = dados.get("cursos_ids") or []
-    billing_type = dados.get("billingType") or os.getenv("ASAAS_BILLING_TYPE", "UNDEFINED")
+    billing_type = dados.get("billingType") or os.getenv(
+        "ASAAS_BILLING_TYPE", "UNDEFINED"
+    )
     callback_url = os.getenv("ASAAS_CALLBACK_URL")
     redirect_url = os.getenv("ASAAS_REDIRECT_URL")
 
@@ -112,7 +132,9 @@ def criar_assinatura(dados: dict):
         payload["redirectUrl"] = redirect_url
 
     try:
-        r = requests.post(f"{ASAAS_BASE_URL}/payments", json=payload, headers=_headers(), timeout=10)
+        r = requests.post(
+            f"{ASAAS_BASE_URL}/payments", json=payload, headers=_headers(), timeout=10
+        )
     except requests.RequestException as e:
         raise HTTPException(502, f"Erro de conexão: {e}")
 
@@ -154,6 +176,7 @@ def criar_assinatura_recorrente(dados: dict):
         raise HTTPException(400, "Campos obrigatórios ausentes")
 
     customer_id = _criar_ou_obter_cliente(nome, cpf, phone)
+    logger.info("Cliente ASAAS %s criado/obtido para %s", customer_id, phone)
 
     payload = {
         "customer": customer_id,
@@ -170,7 +193,12 @@ def criar_assinatura_recorrente(dados: dict):
         payload["redirectUrl"] = redirect_url
 
     try:
-        r = requests.post(f"{ASAAS_BASE_URL}/subscriptions", json=payload, headers=_headers(), timeout=10)
+        r = requests.post(
+            f"{ASAAS_BASE_URL}/subscriptions",
+            json=payload,
+            headers=_headers(),
+            timeout=10,
+        )
     except requests.RequestException as e:
         raise HTTPException(502, f"Erro de conexão: {e}")
 
@@ -186,8 +214,15 @@ def criar_assinatura_recorrente(dados: dict):
     )
 
     if url:
+        logger.info("Enviando link de checkout para %s", phone)
         _enviar_whatsapp_checkout(nome, phone, url)
 
+    logger.info(
+        "Assinatura criada com sucesso para %s (customer=%s, subscription=%s)",
+        nome,
+        customer_id,
+        data.get("id"),
+    )
     return {
         "url": url,
         "customer": customer_id,
@@ -210,7 +245,9 @@ async def webhook(req: Request):
     cursos_ids = [int(x) for x in cursos_ref.split(",") if x.isdigit()]
     descricao = payment.get("description") or "Curso"
 
-    c = requests.get(f"{ASAAS_BASE_URL}/customers/{customer_id}", headers=_headers(), timeout=10)
+    c = requests.get(
+        f"{ASAAS_BASE_URL}/customers/{customer_id}", headers=_headers(), timeout=10
+    )
     if not c.ok:
         raise HTTPException(c.status_code, c.text)
     cust = c.json()
@@ -218,7 +255,9 @@ async def webhook(req: Request):
     cpf = cust.get("cpfCnpj")
     phone = cust.get("mobilePhone") or cust.get("phone")
 
-    matricula = await realizar_matricula({"nome": nome, "whatsapp": phone, "cursos_ids": cursos_ids})
+    matricula = await realizar_matricula(
+        {"nome": nome, "whatsapp": phone, "cursos_ids": cursos_ids}
+    )
     _enviar_whatsapp(nome, phone, matricula.get("cpf", cpf), descricao)
 
     return {"status": "ok"}
