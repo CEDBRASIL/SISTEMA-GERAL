@@ -132,6 +132,60 @@ def criar_assinatura(dados: dict):
     }
 
 
+@router.post("/assinatura")
+def criar_assinatura_recorrente(dados: dict):
+    nome = dados.get("nome")
+    cpf = dados.get("cpf")
+    phone = dados.get("whatsapp") or dados.get("phone")
+    valor = dados.get("valor")
+    descricao = dados.get("descricao") or "Assinatura"
+    cursos_ids: List[int] = dados.get("cursos_ids") or []
+    billing_type = dados.get("billingType") or os.getenv("ASAAS_BILLING_TYPE", "UNDEFINED")
+    cycle = dados.get("cycle") or "MONTHLY"
+    next_due = dados.get("dueDate") or date.today().isoformat()
+    callback_url = os.getenv("ASAAS_CALLBACK_URL")
+    redirect_url = os.getenv("ASAAS_REDIRECT_URL")
+
+    if not nome or not cpf or not phone or not valor:
+        raise HTTPException(400, "Campos obrigatórios ausentes")
+
+    customer_id = _criar_ou_obter_cliente(nome, cpf, phone)
+
+    payload = {
+        "customer": customer_id,
+        "billingType": billing_type,
+        "value": valor,
+        "cycle": cycle,
+        "nextDueDate": next_due,
+        "description": descricao,
+        "externalReference": ",".join(map(str, cursos_ids)),
+    }
+    if callback_url:
+        payload["callbackUrl"] = callback_url
+    if redirect_url:
+        payload["redirectUrl"] = redirect_url
+
+    try:
+        r = requests.post(f"{ASAAS_BASE_URL}/subscriptions", json=payload, headers=_headers(), timeout=10)
+    except requests.RequestException as e:
+        raise HTTPException(502, f"Erro de conexão: {e}")
+
+    if not r.ok:
+        raise HTTPException(r.status_code, r.text)
+
+    data = r.json()
+    url = data.get("invoiceUrl") or data.get("bankSlipUrl") or data.get("transactionReceiptUrl")
+
+    if url:
+        _enviar_whatsapp_checkout(nome, phone, url)
+
+    return {
+        "url": url,
+        "customer": customer_id,
+        "subscription": data.get("id"),
+    }
+
+
 @router.post("/webhook")
 async def webhook(req: Request):
     evt = await req.json()

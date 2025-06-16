@@ -52,3 +52,22 @@ POST /cobrar
 
 O endpoint retorna o JSON da API do ASAAS ou gera erro em caso de falha.
 
+## Nova rota de assinatura
+
+Para criar uma cobrança recorrente via ASAAS configure `ASAAS_KEY` e utilize:
+
+```bash
+POST /asaas/assinatura
+{
+  "nome": "João da Silva",
+  "cpf": "12345678909",
+  "whatsapp": "(61) 99999-9999",
+  "valor": 59.9,
+  "cycle": "MONTHLY",
+  "descricao": "Plano Mensal",
+  "cursos_ids": [130]
+}
+```
+
+O retorno inclui o `subscription` gerado pelo ASAAS e o link para pagamento.
+
