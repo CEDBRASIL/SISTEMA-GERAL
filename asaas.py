@@ -171,7 +171,9 @@ def criar_assinatura_recorrente(dados: dict):
     valor = dados.get("valor")
     descricao = dados.get("descricao") or "Assinatura"
     cursos_ids: List[int] = dados.get("cursos_ids") or []
-    billing_type = dados.get("billingType") or "PIX"
+    billing_type = dados.get("billingType") or os.getenv(
+        "ASAAS_BILLING_TYPE", "UNDEFINED"
+    )
     cycle = dados.get("ciclo") or dados.get("cycle") or "MONTHLY"
     next_due = dados.get("dueDate") or date.today().isoformat()
     callback_url = os.getenv("ASAAS_CALLBACK_URL")
