@@ -284,7 +284,7 @@ async def webhook(req: Request):
     cpf = cust.get("cpfCnpj")
     phone = cust.get("mobilePhone") or cust.get("phone")
 
-    dados_matricula = {"nome": nome, "whatsapp": phone}
+    dados_matricula = {"nome": nome, "whatsapp": phone, "cpf": cpf}
     if fatura_url:
         dados_matricula["fatura_url"] = fatura_url
     if cursos_ids:

@@ -87,25 +87,39 @@ def _proximo_cpf(incremento: int = 0) -> str:
         raise RuntimeError("Limite de tentativas para gerar CPF excedido.")
 
 def _cpf_em_uso(cpf: str) -> bool:
-    """
-    Verifica se o CPF já está em uso na base de dados da OM.
-    """
+    """Verifica se o CPF já está em uso na base de dados da OM."""
     url = f"{OM_BASE}/alunos?unidade_id={UNIDADE_ID}&cpf={cpf}"
     r = requests.get(
         url,
         headers={"Authorization": f"Basic {BASIC_B64}"},
-        timeout=8
+        timeout=8,
     )
     if r.ok and r.json().get("status") == "true":
         return len(r.json().get("data", [])) > 0
     return False
+
+
+def _buscar_aluno_id_por_cpf(cpf: str) -> Optional[str]:
+    """Retorna o ID do aluno cujo CPF já existe na OM (ou ``None``)."""
+    url = f"{OM_BASE}/alunos?unidade_id={UNIDADE_ID}&cpf={cpf}"
+    r = requests.get(
+        url,
+        headers={"Authorization": f"Basic {BASIC_B64}"},
+        timeout=8,
+    )
+    if r.ok and r.json().get("status") == "true":
+        dados = r.json().get("data", [])
+        if dados:
+            return str(dados[0].get("id"))
+    return None
 
 def _cadastrar_somente_aluno(
     nome: str,
     whatsapp: str,
     email: Optional[str],
     token_key: str,
-    senha_padrao: str = "1234567"
+    senha_padrao: str = "1234567",
+    cpf: Optional[str] = None,
 ) -> Tuple[str, str]:
     """
     Cadastra apenas o aluno na OM (gera e-mail dummy se não for fornecido).
@@ -114,8 +128,16 @@ def _cadastrar_somente_aluno(
     # Se não houver e-mail, cria um e-mail dummy a partir do WhatsApp
     email_validado = email or f"{whatsapp}@nao-informado.com"
 
-    for tentativa in range(60):
-        cpf = _proximo_cpf(tentativa)
+    if cpf:
+        existente = _buscar_aluno_id_por_cpf(cpf)
+        if existente:
+            return existente, cpf
+        tentativas = 1
+    else:
+        tentativas = 60
+
+    for tentativa in range(tentativas):
+        cpf_atual = cpf or _proximo_cpf(tentativa)
         payload = {
             "token": token_key,
             "nome": nome,
@@ -124,7 +146,7 @@ def _cadastrar_somente_aluno(
             "fone": whatsapp,
             "celular": whatsapp,
             "data_nascimento": "2000-01-01",
-            "doc_cpf": cpf,
+            "doc_cpf": cpf_atual,
             "doc_rg": "000000000",
             "pais": "Brasil",
             "uf": "DF",
@@ -143,14 +165,16 @@ def _cadastrar_somente_aluno(
             headers={"Authorization": f"Basic {BASIC_B64}"},
             timeout=10
         )
-        _log(f"[CAD] Tentativa {tentativa+1}/60 | Status {r.status_code} | Retorno OM: {r.text}")
+        _log(
+            f"[CAD] Tentativa {tentativa+1}/{tentativas} | Status {r.status_code} | Retorno OM: {r.text}"
+        )
 
         if r.ok and r.json().get("status") == "true":
             aluno_id = r.json()["data"]["id"]
-            return aluno_id, cpf
+            return aluno_id, cpf_atual
 
         info = (r.json() or {}).get("info", "").lower()
-        if "já está em uso" not in info:
+        if "já está em uso" not in info or cpf:
             break
 
     raise RuntimeError("Falha ao cadastrar o aluno")
@@ -183,14 +207,17 @@ def _cadastrar_aluno_om(
     email: Optional[str],
     cursos_ids: List[int],
     token_key: str,
-    senha_padrao: str = "1234567"
+    senha_padrao: str = "1234567",
+    cpf: Optional[str] = None,
 ) -> Tuple[str, str]:
     """
     Cadastra aluno e, se houver cursos_ids, matricula nas disciplinas.
     Retorna: (aluno_id, cpf).
     """
     # 1) Cadastro básico do aluno
-    aluno_id, cpf = _cadastrar_somente_aluno(nome, whatsapp, email, token_key, senha_padrao)
+    aluno_id, cpf_result = _cadastrar_somente_aluno(
+        nome, whatsapp, email, token_key, senha_padrao, cpf
+    )
 
     # 2) Se houver cursos_ids, realiza a matrícula
     if cursos_ids:
@@ -200,7 +227,7 @@ def _cadastrar_aluno_om(
     else:
         _log(f"[MAT] Curso não informado para {nome}. Cadastro concluído sem matrícula.")
 
-    return aluno_id, cpf
+    return aluno_id, cpf_result
 
 def _send_whatsapp_chatpro(
     nome: str,
@@ -331,6 +358,7 @@ async def realizar_matricula(dados: dict):
     cursos_nomes = dados.get("cursos") or []
     cursos_ids_input = dados.get("cursos_ids") or []
     fatura_url = dados.get("fatura_url") or dados.get("invoice_url")
+    cpf = dados.get("cpf")
 
     if not nome or not whatsapp:
         raise HTTPException(
@@ -352,11 +380,17 @@ async def realizar_matricula(dados: dict):
             cursos_ids.extend(CURSOS_OM[chave])
 
     try:
+        if cpf and _cpf_em_uso(cpf):
+            _log(f"[MAT] CPF {cpf} já cadastrado. Pulando matrícula.")
+            return {"status": "ja_matriculado", "cpf": cpf}
+
         # 1) obtém token da unidade OM
         token_unit = _obter_token_unidade()
 
         # 2) cadastra aluno e matricula
-        aluno_id, cpf = _cadastrar_aluno_om(nome, whatsapp, email, cursos_ids, token_unit)
+        aluno_id, cpf = _cadastrar_aluno_om(
+            nome, whatsapp, email, cursos_ids, token_unit, cpf=cpf
+        )
 
         # 3) envia mensagem automática no WhatsApp via ChatPro (agora com login e senha)
         _send_whatsapp_chatpro(nome, whatsapp, cursos_nomes, cpf)
