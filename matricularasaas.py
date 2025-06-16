@@ -1,6 +1,7 @@
 import os
 from fastapi import Request, HTTPException, APIRouter
 import requests
+from utils import formatar_numero_whatsapp
 
 # CHAMADA ROUTER 
 
@@ -56,7 +57,7 @@ async def asaas_webhook(req: Request):
         requests.get(
             WHATSAPP_URL,
             params={
-                "para": phone,
+                "para": formatar_numero_whatsapp(phone),
                 "mensagem": f"Olá {nome}, sua matrícula foi confirmada com sucesso!"
             },
             timeout=10,

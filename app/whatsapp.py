@@ -3,6 +3,7 @@ import logging
 import phonenumbers
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
+from utils import formatar_numero_whatsapp
 try:
     from wppconnect import WppConnect
 except Exception:  # pragma: no cover - lib opcional
@@ -43,9 +44,9 @@ async def send(msg: Msg, bg: BackgroundTasks):
     if not wpp:
         raise HTTPException(501, "Biblioteca wppconnect indisponível")
 
-    # Validação E.164
+    numero_formatado = "+" + formatar_numero_whatsapp(msg.numero)
     try:
-        p = phonenumbers.parse(msg.numero, None)
+        p = phonenumbers.parse(numero_formatado, None)
         if not phonenumbers.is_valid_number(p):
             raise ValueError()
     except Exception:
@@ -53,7 +54,7 @@ async def send(msg: Msg, bg: BackgroundTasks):
     if STATUS["state"] != "ready":
         raise HTTPException(503, "Sessão WhatsApp ainda não conectada")
 
-    chat_id = msg.numero.lstrip("+") + "@c.us"
+    chat_id = numero_formatado.lstrip("+") + "@c.us"
 
     def _worker():
         try:
