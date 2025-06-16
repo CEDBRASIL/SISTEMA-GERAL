@@ -63,7 +63,7 @@ POST /asaas/assinatura
   "cpf": "12345678909",
   "whatsapp": "(61) 99999-9999",
   "valor": 59.9,
-  "cycle": "MONTHLY",
+  "ciclo": "MONTHLY",
   "descricao": "Plano Mensal",
   "cursos_ids": [130]
 }
