@@ -63,6 +63,25 @@ def _enviar_whatsapp(nome: str, phone: str, login: str, modulo: str) -> None:
         pass
 
 
+def _enviar_whatsapp_checkout(nome: str, phone: str, url: str) -> None:
+    mensagem = (
+        f"Olá {nome} Tudo bem?\n\n"
+        "Voce esta a um passo de transformar o seu futuro!\n"
+        "Só falta você finalizar o seu pagamento!\n"
+        "Enviamos no seu SMS\n"
+        f"Ou Pelo link: {url}\n\n"
+        "Qualquer coisa, estou a disposição para ajudar :)"
+    )
+    try:
+        requests.get(
+            WHATSAPP_URL,
+            params={"para": formatar_numero_whatsapp(phone), "mensagem": mensagem},
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+
 @router.post("/checkout")
 def criar_assinatura(dados: dict):
     nome = dados.get("nome")
@@ -94,8 +113,12 @@ def criar_assinatura(dados: dict):
     if not r.ok:
         raise HTTPException(r.status_code, r.text)
 
+    url = r.json().get("invoiceUrl") or r.json().get("bankSlipUrl")
+
+    _enviar_whatsapp_checkout(nome, phone, url)
+
     return {
-        "url": r.json().get("invoiceUrl") or r.json().get("bankSlipUrl"),
+        "url": url,
         "customer": customer_id,
     }
 
