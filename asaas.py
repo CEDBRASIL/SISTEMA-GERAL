@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from utils import formatar_numero_whatsapp
 from matricular import realizar_matricula
+from cursos import CURSOS_OM
 
 router = APIRouter(prefix="/asaas", tags=["Matrícula Assas"])
 
@@ -245,6 +246,13 @@ async def webhook(req: Request):
     cursos_ids = [int(x) for x in cursos_ref.split(",") if x.isdigit()]
     descricao = payment.get("description") or "Curso"
 
+    # Caso nenhum ID seja fornecido, tenta mapear a descricao para os IDs
+    if not cursos_ids:
+        for nome_curso, ids in CURSOS_OM.items():
+            if nome_curso.lower() == descricao.lower():
+                cursos_ids = ids
+                break
+
     c = requests.get(
         f"{ASAAS_BASE_URL}/customers/{customer_id}", headers=_headers(), timeout=10
     )
@@ -255,9 +263,14 @@ async def webhook(req: Request):
     cpf = cust.get("cpfCnpj")
     phone = cust.get("mobilePhone") or cust.get("phone")
 
-    matricula = await realizar_matricula(
-        {"nome": nome, "whatsapp": phone, "cursos_ids": cursos_ids}
-    )
-    _enviar_whatsapp(nome, phone, matricula.get("cpf", cpf), descricao)
+    dados_matricula = {"nome": nome, "whatsapp": phone}
+    if cursos_ids:
+        dados_matricula["cursos_ids"] = cursos_ids
+    else:
+        dados_matricula["cursos"] = [descricao]
+
+    matricula = await realizar_matricula(dados_matricula)
+
+    # A mensagem de boas-vindas é disparada pelo próprio modulo de matrícula
 
     return {"status": "ok"}
