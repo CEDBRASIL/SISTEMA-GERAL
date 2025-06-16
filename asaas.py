@@ -249,6 +249,22 @@ async def webhook(req: Request):
         or payment.get("bankSlipUrl")
         or payment.get("transactionReceiptUrl")
     )
+    if not fatura_url and payment.get("id"):
+        try:
+            resp = requests.get(
+                f"{ASAAS_BASE_URL}/payments/{payment['id']}",
+                headers=_headers(),
+                timeout=10,
+            )
+            if resp.ok:
+                data = resp.json()
+                fatura_url = (
+                    data.get("invoiceUrl")
+                    or data.get("bankSlipUrl")
+                    or data.get("transactionReceiptUrl")
+                )
+        except requests.RequestException:
+            logger.exception("Erro ao buscar detalhes do pagamento %s", payment.get("id"))
     customer_id = payment.get("customer") or evt.get("customer")
     if not customer_id:
         return {"status": "ignored"}
