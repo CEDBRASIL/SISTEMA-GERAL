@@ -4,6 +4,7 @@ import unicodedata
 import difflib
 import datetime
 import json
+from utils import formatar_numero_whatsapp
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
 import gspread
@@ -38,7 +39,7 @@ def enviar_log_whatsapp(mensagem: str) -> None:
     """Envia mensagem de log via WhatsApp, ignorando tokens renovados."""
     if "Token de unidade atualizado" in mensagem:
         return
-    numero = "".join(filter(str.isdigit, WHATSAPP_LOG_NUM))
+    numero = formatar_numero_whatsapp(WHATSAPP_LOG_NUM)
     if not numero:
         return
     try:
@@ -123,7 +124,7 @@ def buscar_aluno_por_cpf(cpf: str) -> str | None:
 def enviar_whatsapp_chatpro(nome: str, celular: str, plano: str, cpf: str, senha_padrao: str = "1234567") -> None:
     """Envia uma mensagem de boas-vindas via WhatsApp."""
 
-    numero_telefone = "".join(filter(str.isdigit, celular))
+    numero_telefone = formatar_numero_whatsapp(celular)
 
     mensagem = (
         f"👋 Olá, {nome}!\n\n"

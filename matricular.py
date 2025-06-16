@@ -3,6 +3,7 @@ import threading
 from typing import List, Tuple, Optional
 import requests
 from fastapi import APIRouter, HTTPException
+from utils import formatar_numero_whatsapp
 from datetime import datetime
 from cursos import CURSOS_OM  # Importa o dicionário de mapeamento
 
@@ -214,8 +215,8 @@ def _send_whatsapp_chatpro(
     """
     # Novo endpoint não requer token ou configuração adicional
 
-    # Garante que o número seja somente dígitos (sem parênteses, espaços ou traços)
-    numero_telefone = "".join(filter(str.isdigit, whatsapp))
+    # Formata e adiciona o DDI brasileiro caso ausente
+    numero_telefone = formatar_numero_whatsapp(whatsapp)
 
     # Monta a mensagem com emojis e credenciais
     cursos_texto = "\n".join(f"• {c}" for c in cursos_nomes) if cursos_nomes else "Nenhum curso específico."
@@ -251,7 +252,7 @@ def _send_whatsapp_log(mensagem: str) -> None:
     """Envia mensagem de log para o WhatsApp, exceto para renovação de token."""
     if "Token de unidade atualizado" in mensagem:
         return
-    numero = "".join(filter(str.isdigit, WHATSAPP_LOG_NUM))
+    numero = formatar_numero_whatsapp(WHATSAPP_LOG_NUM)
     if not numero:
         return
     try:
@@ -287,7 +288,7 @@ def _send_discord_log(
         "✅ MATRÍCULA REALIZADA COM SUCESSO\n\n"
         f"👤 Nome: {nome}\n"
         f"📄 CPF: {cpf}\n"
-        f"📱 Celular: +{whatsapp}\n"
+        f"📱 Celular: +{formatar_numero_whatsapp(whatsapp)}\n"
         f"🎓 Cursos: {cursos_ids}"
     )
 
