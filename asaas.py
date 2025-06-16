@@ -244,6 +244,11 @@ async def webhook(req: Request):
         return {"status": "ignored"}
 
     payment = evt.get("payment", {})
+    fatura_url = (
+        payment.get("invoiceUrl")
+        or payment.get("bankSlipUrl")
+        or payment.get("transactionReceiptUrl")
+    )
     customer_id = payment.get("customer") or evt.get("customer")
     if not customer_id:
         return {"status": "ignored"}
@@ -280,12 +285,16 @@ async def webhook(req: Request):
     phone = cust.get("mobilePhone") or cust.get("phone")
 
     dados_matricula = {"nome": nome, "whatsapp": phone}
+    if fatura_url:
+        dados_matricula["fatura_url"] = fatura_url
     if cursos_ids:
         dados_matricula["cursos_ids"] = cursos_ids
     else:
         dados_matricula["cursos"] = [descricao]
 
     matricula = await realizar_matricula(dados_matricula)
+    if fatura_url:
+        logger.info("Fatura registrada: %s", fatura_url)
 
     # A mensagem de boas-vindas é disparada pelo próprio modulo de matrícula
 

@@ -268,7 +268,8 @@ def _send_discord_log(
     nome: str,
     cpf: str,
     whatsapp: str,
-    cursos_ids: List[int]
+    cursos_ids: List[int],
+    fatura_url: Optional[str] = None,
 ) -> None:
     """
     Envia mensagem de log para o canal Discord via webhook.
@@ -291,6 +292,8 @@ def _send_discord_log(
         f"📱 Celular: +{formatar_numero_whatsapp(whatsapp)}\n"
         f"🎓 Cursos: {cursos_ids}"
     )
+    if fatura_url:
+        mensagem_discord += f"\n🔗 Fatura: {fatura_url}"
 
     payload = {
         "content": mensagem_discord
@@ -320,12 +323,14 @@ async def realizar_matricula(dados: dict):
       - email: str (opcional)
       - cursos: List[str] (opcional, nomes dos cursos conforme mapeamento em cursos.py)
       - cursos_ids: List[int] (opcional, IDs diretos, caso queira forçar)
+      - fatura_url: str (opcional, link da fatura)
     """
     nome = dados.get("nome")
     whatsapp = dados.get("whatsapp")
     email = dados.get("email")
     cursos_nomes = dados.get("cursos") or []
     cursos_ids_input = dados.get("cursos_ids") or []
+    fatura_url = dados.get("fatura_url") or dados.get("invoice_url")
 
     if not nome or not whatsapp:
         raise HTTPException(
@@ -357,7 +362,7 @@ async def realizar_matricula(dados: dict):
         _send_whatsapp_chatpro(nome, whatsapp, cursos_nomes, cpf)
 
         # 4) envia log para o Discord informando sucesso na matrícula
-        _send_discord_log(nome, cpf, whatsapp, cursos_ids)
+        _send_discord_log(nome, cpf, whatsapp, cursos_ids, fatura_url)
 
         return {
             "status": "ok",
