@@ -362,7 +362,7 @@ async def _process_webhook(payload: dict):
             or parse_valor(os.getenv("ASSINATURA_VALOR_PADRAO", "0"))
         )
 
-        if not valor_plano or valor_plano <= 0:
+        if valor_plano is None or valor_plano < 0:
             raise HTTPException(400, "Valor do plano não informado ou inválido.")
 
         cursos_ids = obter_cursos_ids(plano_assinatura)
