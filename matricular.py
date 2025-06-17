@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 import requests
 from fastapi import APIRouter, HTTPException
 from utils import formatar_numero_whatsapp
-from datetime import datetime
+from datetime import datetime, timedelta
 from cursos import CURSOS_OM, obter_nomes_por_ids  # Importa o dicionário de mapeamento e utilitário
 
 router = APIRouter()
@@ -234,7 +234,8 @@ def _send_whatsapp_chatpro(
     whatsapp: str,
     cursos_nomes: List[str],
     cpf: str,
-    senha_padrao: str = "1234567"
+    senha_padrao: str = "1234567",
+    vencimento: str | None = None,
 ) -> None:
     """
     Envia mensagem automática no WhatsApp via ChatPro, com boas-vindas,
@@ -253,12 +254,18 @@ def _send_whatsapp_chatpro(
         f"📚 Curso(s) adquirido(s):\n"
         f"{cursos_texto}\n\n"
         f"🔐 Seu login: {cpf}\n"
-        f"🔑 Sua senha: {senha_padrao}\n\n"
-        f"🌐 Site da escola: https://www.cedbrasilia.com.br\n"
-        f"❤ Ganhe dinheiro conosco: https://www.cedbrasilia.com.br/afiliados\n"
-        f"🤖 APP Android: https://play.google.com/store/apps/datasafety?id=br.com.om.app&hl=pt_BR\n"
-        f"🍎 APP iOS: https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
-        f"Qualquer dúvida, estamos à disposição. Boa jornada de estudos! 🚀"
+        f"🔑 Sua senha: {senha_padrao}\n"
+    )
+
+    if vencimento:
+        mensagem += f"\n💳 Próximo pagamento em: {vencimento}\n"
+
+    mensagem += (
+        "\n🌐 Site da escola: https://www.cedbrasilia.com.br\n"
+        "❤ Ganhe dinheiro conosco: https://www.cedbrasilia.com.br/afiliados\n"
+        "🤖 APP Android: https://play.google.com/store/apps/datasafety?id=br.com.om.app&hl=pt_BR\n"
+        "🍎 APP iOS: https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
+        "Qualquer dúvida, estamos à disposição. Boa jornada de estudos! 🚀"
     )
 
     # Envia a mensagem utilizando o novo endpoint
@@ -395,7 +402,8 @@ async def realizar_matricula(dados: dict):
         )
 
         # 3) envia mensagem automática no WhatsApp via ChatPro (agora com login e senha)
-        _send_whatsapp_chatpro(nome, whatsapp, cursos_nomes, cpf)
+        venc = (datetime.now() + timedelta(days=30)).strftime("%d/%m/%Y")
+        _send_whatsapp_chatpro(nome, whatsapp, cursos_nomes, cpf, vencimento=venc)
 
         # 4) envia log para o Discord informando sucesso na matrícula
         _send_discord_log(nome, cpf, whatsapp, cursos_ids, fatura_url)

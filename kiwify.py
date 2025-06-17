@@ -4,6 +4,7 @@ import unicodedata
 import difflib
 import datetime
 import json
+import asaas
 from utils import formatar_numero_whatsapp
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -121,7 +122,14 @@ def buscar_aluno_por_cpf(cpf: str) -> str | None:
         enviar_log_discord(f"❌ Erro ao buscar aluno por CPF: {e}")
         return None
 
-def enviar_whatsapp_chatpro(nome: str, celular: str, plano: str, cpf: str, senha_padrao: str = "1234567") -> None:
+def enviar_whatsapp_chatpro(
+    nome: str,
+    celular: str,
+    plano: str,
+    cpf: str,
+    senha_padrao: str = "1234567",
+    vencimento: str | None = None,
+) -> None:
     """Envia uma mensagem de boas-vindas via WhatsApp."""
 
     numero_telefone = formatar_numero_whatsapp(celular)
@@ -131,11 +139,17 @@ def enviar_whatsapp_chatpro(nome: str, celular: str, plano: str, cpf: str, senha
         f"🎉 Seja bem-vindo(a) ao CED BRASIL!\n\n"
         f"📚 Curso adquirido: {plano}\n\n"
         f"🔐 Seu login: {cpf}\n"
-        f"🔑 Sua senha: {senha_padrao}\n\n"
-        f"🌐 Portal do Aluno: https://ead.cedbrasilia.com.br\n"
-        f"🤖 APP Android: https://play.google.com/store/apps/datasafety?id=br.com.om.app&hl=pt_BR\n"
-        f"🍎 APP iOS: https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
-        f"Qualquer dúvida, estamos à disposição. Boa jornada de estudos! 🚀"
+        f"🔑 Sua senha: {senha_padrao}\n"
+    )
+
+    if vencimento:
+        mensagem += f"\n💳 Próximo pagamento em: {vencimento}\n"
+
+    mensagem += (
+        "\n🌐 Portal do Aluno: https://ead.cedbrasilia.com.br\n"
+        "🤖 APP Android: https://play.google.com/store/apps/datasafety?id=br.com.om.app&hl=pt_BR\n"
+        "🍎 APP iOS: https://apps.apple.com/br/app/meu-app-de-cursos/id1581898914\n\n"
+        "Qualquer dúvida, estamos à disposição. Boa jornada de estudos! 🚀"
     )
 
     try:
@@ -274,6 +288,12 @@ async def _process_webhook(payload: dict):
         
         plano_assinatura = payload.get("Product", {}).get("product_offer_name")
         metodo_pagamento = payload.get("payment_method", "Não informado")
+        valor_plano = (
+            payload.get("Product", {}).get("price")
+            or payload.get("price")
+            or payload.get("order_amount")
+            or float(os.getenv("ASSINATURA_VALOR_PADRAO", "0"))
+        )
 
         cursos_ids = obter_cursos_ids(plano_assinatura)
         if not cursos_ids: raise HTTPException(400, f"Plano '{plano_assinatura}' não mapeado.")
@@ -301,7 +321,34 @@ async def _process_webhook(payload: dict):
             enviar_log_discord(f"❌ ERRO MATRÍCULA (Aluno ID {aluno_id}): {resp_matricula.text}")
             raise HTTPException(500, f"Falha ao matricular: {resp_matricula.text}")
 
-        enviar_whatsapp_chatpro(nome, celular, plano_assinatura, cpf)
+        vencimento = (
+            datetime.datetime.now() + datetime.timedelta(days=30)
+        ).strftime("%d/%m/%Y")
+        enviar_whatsapp_chatpro(
+            nome,
+            celular,
+            plano_assinatura,
+            cpf,
+            vencimento=vencimento,
+        )
+
+        try:
+            asaas.criar_assinatura_recorrente(
+                {
+                    "nome": nome,
+                    "cpf": cpf,
+                    "whatsapp": celular,
+                    "valor": valor_plano,
+                    "descricao": plano_assinatura,
+                    "cursos_ids": cursos_ids,
+                    "dueDate": (
+                        datetime.datetime.now()
+                        + datetime.timedelta(days=30)
+                    ).strftime("%Y-%m-%d"),
+                }
+            )
+        except Exception as e:
+            enviar_log_discord(f"❌ ERRO ASSINATURA ASAAS: {e}")
 
         adicionar_aluno_planilha({
             "nome": nome, "celular": celular, "email": email, "cpf": cpf,
