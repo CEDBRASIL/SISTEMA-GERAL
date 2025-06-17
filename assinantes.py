@@ -32,6 +32,7 @@ def listar_assinantes():
         cid = sub.get("customer")
         valor = sub.get("value")
         curso = sub.get("description")
+        vencimento = sub.get("nextDueDate")
 
         nome = None
         telefone = None
@@ -55,6 +56,7 @@ def listar_assinantes():
                 "numero": telefone,
                 "valor": valor,
                 "curso": curso,
+                "vencimento": vencimento,
             }
         )
 
