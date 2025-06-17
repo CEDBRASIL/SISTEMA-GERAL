@@ -3,6 +3,7 @@ import requests
 import unicodedata
 import difflib
 import datetime
+from dateutil.relativedelta import relativedelta
 import json
 import asaas
 from utils import formatar_numero_whatsapp
@@ -233,7 +234,9 @@ def adicionar_aluno_planilha(dados: dict) -> None:
         client = gspread.authorize(creds)
         sheet = client.open(GOOGLE_SHEET_NAME).sheet1
 
-        proxima_cobranca = (datetime.datetime.now() + datetime.timedelta(days=30)).strftime("%d/%m/%Y")
+        proxima_cobranca = (
+            datetime.datetime.now() + relativedelta(months=1)
+        ).strftime("%d/%m/%Y")
         linha_para_adicionar = [
             dados.get("nome"), dados.get("celular"), dados.get("email"), dados.get("cpf"),
             proxima_cobranca, dados.get("metodo_pagamento"), dados.get("plano_assinatura"),
@@ -322,7 +325,7 @@ async def _process_webhook(payload: dict):
             raise HTTPException(500, f"Falha ao matricular: {resp_matricula.text}")
 
         vencimento = (
-            datetime.datetime.now() + datetime.timedelta(days=30)
+            datetime.datetime.now() + relativedelta(months=1)
         ).strftime("%d/%m/%Y")
         enviar_whatsapp_chatpro(
             nome,
@@ -342,8 +345,7 @@ async def _process_webhook(payload: dict):
                     "descricao": plano_assinatura,
                     "cursos_ids": cursos_ids,
                     "dueDate": (
-                        datetime.datetime.now()
-                        + datetime.timedelta(days=30)
+                        datetime.datetime.now() + relativedelta(months=1)
                     ).strftime("%Y-%m-%d"),
                 }
             )

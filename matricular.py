@@ -4,7 +4,8 @@ from typing import List, Tuple, Optional
 import requests
 from fastapi import APIRouter, HTTPException
 from utils import formatar_numero_whatsapp
-from datetime import datetime, timedelta
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from cursos import CURSOS_OM, obter_nomes_por_ids  # Importa o dicionário de mapeamento e utilitário
 
 router = APIRouter()
@@ -402,7 +403,7 @@ async def realizar_matricula(dados: dict):
         )
 
         # 3) envia mensagem automática no WhatsApp via ChatPro (agora com login e senha)
-        venc = (datetime.now() + timedelta(days=30)).strftime("%d/%m/%Y")
+        venc = (datetime.now() + relativedelta(months=1)).strftime("%d/%m/%Y")
         _send_whatsapp_chatpro(nome, whatsapp, cursos_nomes, cpf, vencimento=venc)
 
         # 4) envia log para o Discord informando sucesso na matrícula
