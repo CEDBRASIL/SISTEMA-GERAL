@@ -6,7 +6,7 @@ import datetime
 from dateutil.relativedelta import relativedelta
 import json
 import asaas
-from utils import formatar_numero_whatsapp, parse_valor
+from utils import formatar_numero_whatsapp, parse_valor, parse_valor_centavos
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
 import gspread
@@ -356,7 +356,10 @@ async def _process_webhook(payload: dict):
         plano_assinatura = payload.get("Product", {}).get("product_offer_name")
         metodo_pagamento = payload.get("payment_method", "Não informado")
         valor_plano = (
-            parse_valor(payload.get("Product", {}).get("price"))
+            parse_valor_centavos(
+                payload.get("Commissions", {}).get("product_base_price")
+            )
+            or parse_valor(payload.get("Product", {}).get("price"))
             or parse_valor(payload.get("price"))
             or parse_valor(payload.get("order_amount"))
             or parse_valor(os.getenv("ASSINATURA_VALOR_PADRAO", "0"))

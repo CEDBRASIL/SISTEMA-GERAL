@@ -54,3 +54,24 @@ def parse_valor(valor) -> float | None:
         return float(valor)
     except Exception:
         return None
+
+
+def parse_valor_centavos(valor) -> float | None:
+    """Converte valores expressos em centavos para ``float`` em reais."""
+
+    if valor is None:
+        return None
+
+    if isinstance(valor, int):
+        return valor / 100
+
+    if isinstance(valor, str) and valor.isdigit():
+        try:
+            return int(valor) / 100
+        except ValueError:
+            return None
+
+    valor_float = parse_valor(valor)
+    if valor_float is None:
+        return None
+    return valor_float / 100 if valor_float.is_integer() else valor_float
