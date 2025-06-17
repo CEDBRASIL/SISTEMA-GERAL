@@ -21,3 +21,36 @@ def formatar_numero_whatsapp(numero: str) -> str:
         digitos = digitos[:2] + digitos[3:]
 
     return "55" + digitos
+
+
+def parse_valor(valor) -> float | None:
+    """Converte valores recebidos como string ou numérico em ``float``.
+
+    Aceita formatos com vírgula ou ponto como separador decimal e ignora o
+    símbolo ``R$`` e espaços. Retorna ``None`` se a conversão falhar.
+    """
+
+    if valor is None:
+        return None
+
+    if isinstance(valor, (int, float)):
+        try:
+            return float(valor)
+        except ValueError:
+            return None
+
+    if isinstance(valor, str):
+        valor = valor.strip().replace("R$", "").replace(" ", "")
+        if "," in valor and "." in valor:
+            valor = valor.replace(".", "").replace(",", ".")
+        else:
+            valor = valor.replace(",", ".")
+        try:
+            return float(valor)
+        except ValueError:
+            return None
+
+    try:
+        return float(valor)
+    except Exception:
+        return None

@@ -7,7 +7,7 @@ from typing import List
 import requests
 from fastapi import APIRouter, HTTPException, Request
 
-from utils import formatar_numero_whatsapp
+from utils import formatar_numero_whatsapp, parse_valor
 from matricular import realizar_matricula
 from cursos import CURSOS_OM
 import msgasaas
@@ -121,8 +121,12 @@ def _criar_checkout(
     cursos_ids = cursos_ids or []
     billing_type = billing_type or os.getenv("ASAAS_BILLING_TYPE", "UNDEFINED")
 
+    valor = parse_valor(valor)
+
     if not nome or not cpf or not phone or valor is None:
         raise HTTPException(400, "Campos obrigatórios ausentes")
+    if valor <= 0:
+        raise HTTPException(400, "Valor inválido")
 
     customer_id = _criar_ou_obter_cliente(nome, cpf, phone)
 
@@ -171,7 +175,7 @@ def criar_assinatura(dados: dict):
     nome = dados.get("nome")
     cpf = dados.get("cpf")
     phone = dados.get("whatsapp") or dados.get("phone")
-    valor = dados.get("valor")
+    valor = parse_valor(dados.get("valor"))
     descricao = dados.get("descricao") or dados.get("curso") or "Curso"
     cursos_ids: List[int] = dados.get("cursos_ids") or []
     billing_type = dados.get("billingType")
@@ -197,7 +201,7 @@ def gerar_matricula_checkout(dados: dict):
     nome = dados.get("nome")
     cpf = dados.get("cpf")
     phone = dados.get("whatsapp") or dados.get("phone")
-    valor = dados.get("valor")
+    valor = parse_valor(dados.get("valor"))
     descricao = dados.get("descricao") or dados.get("curso") or "Curso"
     cursos_ids: List[int] = dados.get("cursos_ids") or []
     billing_type = dados.get("billingType")
@@ -222,19 +226,23 @@ def criar_assinatura_recorrente(dados: dict):
     nome = dados.get("nome")
     cpf = dados.get("cpf")
     phone = dados.get("whatsapp") or dados.get("phone")
-    valor = dados.get("valor")
+    valor = parse_valor(dados.get("valor"))
     descricao = dados.get("descricao") or "Assinatura"
     cursos_ids: List[int] = dados.get("cursos_ids") or []
     billing_type = dados.get("billingType") or os.getenv(
         "ASAAS_BILLING_TYPE", "UNDEFINED"
     )
     cycle = dados.get("ciclo") or dados.get("cycle") or "MONTHLY"
-    next_due = dados.get("dueDate") or (date.today() + relativedelta(months=1)).isoformat()
+    next_due = (
+        dados.get("dueDate") or (date.today() + relativedelta(months=1)).isoformat()
+    )
     callback_url = os.getenv("ASAAS_CALLBACK_URL")
     redirect_url = os.getenv("ASAAS_REDIRECT_URL")
 
     if not nome or not cpf or not phone or valor is None:
         raise HTTPException(400, "Campos obrigatórios ausentes")
+    if valor <= 0:
+        raise HTTPException(400, "Valor inválido")
 
     customer_id = _criar_ou_obter_cliente(nome, cpf, phone)
     logger.info("Cliente ASAAS %s criado/obtido para %s", customer_id, phone)
@@ -332,7 +340,9 @@ async def webhook(req: Request):
                     or data.get("transactionReceiptUrl")
                 )
         except requests.RequestException:
-            logger.exception("Erro ao buscar detalhes do pagamento %s", payment.get("id"))
+            logger.exception(
+                "Erro ao buscar detalhes do pagamento %s", payment.get("id")
+            )
     customer_id = payment.get("customer") or evt.get("customer")
     if not customer_id:
         return {"status": "ignored"}

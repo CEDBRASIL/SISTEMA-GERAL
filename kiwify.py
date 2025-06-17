@@ -6,7 +6,7 @@ import datetime
 from dateutil.relativedelta import relativedelta
 import json
 import asaas
-from utils import formatar_numero_whatsapp
+from utils import formatar_numero_whatsapp, parse_valor
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
 import gspread
@@ -27,15 +27,18 @@ UNIDADE_ID = os.getenv("UNIDADE_ID")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 
 # Variáveis para credenciais do Google
-GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON") # Para segredos em texto
-GOOGLE_SHEETS_CREDENTIALS_PATH = os.getenv("GOOGLE_SHEETS_CREDENTIALS_PATH") # Para arquivos secretos
+GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")  # Para segredos em texto
+GOOGLE_SHEETS_CREDENTIALS_PATH = os.getenv(
+    "GOOGLE_SHEETS_CREDENTIALS_PATH"
+)  # Para arquivos secretos
 GOOGLE_SHEET_NAME = os.getenv("GOOGLE_SHEET_NAME")
 
 # --- Variáveis Globais (Cache) ---
 TOKEN_UNIDADE: str | None = None
-CURSOS_OM_CACHE: dict = {} # Cache para os cursos carregados da API
+CURSOS_OM_CACHE: dict = {}  # Cache para os cursos carregados da API
 
 # --- Funções Auxiliares ---
+
 
 def enviar_log_whatsapp(mensagem: str) -> None:
     """Envia mensagem de log via WhatsApp, ignorando tokens renovados."""
@@ -65,6 +68,7 @@ def enviar_log_discord(mensagem: str) -> None:
     except Exception as e:
         print(f"❌ Erro ao enviar log para Discord: {e}")
 
+
 def obter_token_unidade() -> str | None:
     """Busca e atualiza o token de autenticação da unidade."""
     global TOKEN_UNIDADE
@@ -83,28 +87,40 @@ def obter_token_unidade() -> str | None:
         enviar_log_discord(f"❌ Exceção ao obter token: {e}")
     return None
 
+
 def atualizar_cache_cursos_om() -> None:
     """Busca todos os cursos da API e os armazena em cache."""
     global CURSOS_OM_CACHE
     enviar_log_discord("🔄 Atualizando cache de cursos a partir da API...")
     try:
-        resp = requests.get(f"{OM_BASE}/cursos/", headers={"Authorization": f"Basic {BASIC_B64}"})
+        resp = requests.get(
+            f"{OM_BASE}/cursos/", headers={"Authorization": f"Basic {BASIC_B64}"}
+        )
         if not resp.ok:
             enviar_log_discord(f"❌ Falha ao buscar cursos da API: {resp.text}")
             return
-        
+
         cursos_data = resp.json().get("data", [])
-        novo_cache = {curso["nome"]: [curso["id"]] for curso in cursos_data if "nome" in curso and "id" in curso}
-        
+        novo_cache = {
+            curso["nome"]: [curso["id"]]
+            for curso in cursos_data
+            if "nome" in curso and "id" in curso
+        }
+
         if not novo_cache:
-            enviar_log_discord("⚠️ Nenhum curso encontrado na API para popular o cache.")
+            enviar_log_discord(
+                "⚠️ Nenhum curso encontrado na API para popular o cache."
+            )
             return
 
         CURSOS_OM_CACHE = novo_cache
-        enviar_log_discord(f"✅ Cache de cursos atualizado com sucesso. {len(CURSOS_OM_CACHE)} cursos carregados.")
+        enviar_log_discord(
+            f"✅ Cache de cursos atualizado com sucesso. {len(CURSOS_OM_CACHE)} cursos carregados."
+        )
 
     except Exception as e:
         enviar_log_discord(f"❌ Exceção ao atualizar cache de cursos: {e}")
+
 
 def buscar_aluno_por_cpf(cpf: str) -> str | None:
     """Busca o ID de um aluno no sistema OM pelo CPF."""
@@ -122,6 +138,7 @@ def buscar_aluno_por_cpf(cpf: str) -> str | None:
     except Exception as e:
         enviar_log_discord(f"❌ Erro ao buscar aluno por CPF: {e}")
         return None
+
 
 def enviar_whatsapp_chatpro(
     nome: str,
@@ -160,7 +177,9 @@ def enviar_whatsapp_chatpro(
             timeout=10,
         )
         if r.ok:
-            enviar_log_discord(f"✅ WhatsApp enviado para {numero_telefone}. Resposta: {r.text}")
+            enviar_log_discord(
+                f"✅ WhatsApp enviado para {numero_telefone}. Resposta: {r.text}"
+            )
         else:
             enviar_log_discord(
                 f"❌ Falha ao enviar WhatsApp para {numero_telefone}. HTTP {r.status_code} | {r.text}"
@@ -168,9 +187,16 @@ def enviar_whatsapp_chatpro(
     except Exception as e:
         enviar_log_discord(f"❌ Erro ao enviar WhatsApp para {numero_telefone}: {e}")
 
+
 def _normalize(text: str) -> str:
     """Remove acentos e converte para caixa baixa."""
-    return unicodedata.normalize("NFKD", text or "").encode("ASCII", "ignore").decode().lower()
+    return (
+        unicodedata.normalize("NFKD", text or "")
+        .encode("ASCII", "ignore")
+        .decode()
+        .lower()
+    )
+
 
 def obter_cursos_ids(nome_plano: str):
     """Mapeia o nome do plano da Kiwify para IDs de curso usando o cache da API
@@ -198,7 +224,9 @@ def obter_cursos_ids(nome_plano: str):
             return value
 
     nomes_norm_static = {_normalize(k): k for k in CURSOS_OM}
-    match_static = difflib.get_close_matches(norm_plano, nomes_norm_static.keys(), n=1, cutoff=0.8)
+    match_static = difflib.get_close_matches(
+        norm_plano, nomes_norm_static.keys(), n=1, cutoff=0.8
+    )
     if match_static:
         key = nomes_norm_static[match_static[0]]
         enviar_log_discord(f"ℹ️ Plano aproximado encontrado via fallback: '{key}'")
@@ -206,48 +234,64 @@ def obter_cursos_ids(nome_plano: str):
 
     return None
 
+
 def adicionar_aluno_planilha(dados: dict) -> None:
     """Adiciona uma nova linha com dados do aluno na Planilha Google."""
-    if not GOOGLE_SHEET_NAME or (not GOOGLE_CREDENTIALS_JSON and not GOOGLE_SHEETS_CREDENTIALS_PATH):
-        enviar_log_discord("⚠️ Variáveis do Google Sheets não configuradas. Etapa ignorada.")
+    if not GOOGLE_SHEET_NAME or (
+        not GOOGLE_CREDENTIALS_JSON and not GOOGLE_SHEETS_CREDENTIALS_PATH
+    ):
+        enviar_log_discord(
+            "⚠️ Variáveis do Google Sheets não configuradas. Etapa ignorada."
+        )
         return
-        
+
     try:
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive",
         ]
         creds = None
-        
+
         if GOOGLE_CREDENTIALS_JSON:
             # Método 1: Carrega a partir da string da variável de ambiente (MAIS SEGURO PARA PRODUÇÃO)
             creds_dict = json.loads(GOOGLE_CREDENTIALS_JSON)
             creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         elif GOOGLE_SHEETS_CREDENTIALS_PATH:
             # Método 2: Carrega a partir do arquivo (bom para Render "Secret Files" e local)
-            creds = Credentials.from_service_account_file(GOOGLE_SHEETS_CREDENTIALS_PATH, scopes=scopes)
+            creds = Credentials.from_service_account_file(
+                GOOGLE_SHEETS_CREDENTIALS_PATH, scopes=scopes
+            )
 
         if not creds:
-             enviar_log_discord("❌ Falha ao carregar credenciais do Google.")
-             return
+            enviar_log_discord("❌ Falha ao carregar credenciais do Google.")
+            return
 
         client = gspread.authorize(creds)
         sheet = client.open(GOOGLE_SHEET_NAME).sheet1
 
-        proxima_cobranca = (
-            datetime.datetime.now() + relativedelta(months=1)
-        ).strftime("%d/%m/%Y")
+        proxima_cobranca = (datetime.datetime.now() + relativedelta(months=1)).strftime(
+            "%d/%m/%Y"
+        )
         linha_para_adicionar = [
-            dados.get("nome"), dados.get("celular"), dados.get("email"), dados.get("cpf"),
-            proxima_cobranca, dados.get("metodo_pagamento"), dados.get("plano_assinatura"),
+            dados.get("nome"),
+            dados.get("celular"),
+            dados.get("email"),
+            dados.get("cpf"),
+            proxima_cobranca,
+            dados.get("metodo_pagamento"),
+            dados.get("plano_assinatura"),
         ]
-        
+
         sheet.append_row(linha_para_adicionar)
-        enviar_log_discord(f"📊 Aluno '{dados.get('nome')}' adicionado à planilha com sucesso!")
+        enviar_log_discord(
+            f"📊 Aluno '{dados.get('nome')}' adicionado à planilha com sucesso!"
+        )
     except Exception as e:
         enviar_log_discord(f"❌ ERRO GOOGLE SHEETS: {e}")
 
+
 # --- Dependências e Lógica Principal do Webhook ---
+
 
 def log_request_info(request: Request):
     """Dependência para logar todas as requisições."""
@@ -258,7 +302,9 @@ def log_request_info(request: Request):
     print(mensagem)
     enviar_log_discord(mensagem)
 
+
 router.dependencies.append(Depends(log_request_info))
+
 
 async def _process_webhook(payload: dict):
     """Processa o payload do webhook da Kiwify."""
@@ -268,16 +314,27 @@ async def _process_webhook(payload: dict):
         if evento == "order_refunded":
             customer = payload.get("Customer", {})
             cpf = customer.get("CPF", "").replace(".", "").replace("-", "")
-            if not cpf: raise HTTPException(400, "CPF não encontrado no payload de reembolso.")
+            if not cpf:
+                raise HTTPException(400, "CPF não encontrado no payload de reembolso.")
             aluno_id = buscar_aluno_por_cpf(cpf)
-            if not aluno_id: raise HTTPException(404, "Aluno não encontrado para o CPF informado.")
-            
-            resp_exclusao = requests.delete(f"{OM_BASE}/alunos/{aluno_id}", headers={"Authorization": f"Basic {BASIC_B64}"})
+            if not aluno_id:
+                raise HTTPException(404, "Aluno não encontrado para o CPF informado.")
+
+            resp_exclusao = requests.delete(
+                f"{OM_BASE}/alunos/{aluno_id}",
+                headers={"Authorization": f"Basic {BASIC_B64}"},
+            )
             if not resp_exclusao.ok:
-                enviar_log_discord(f"❌ ERRO AO EXCLUIR ALUNO {aluno_id}: {resp_exclusao.text}")
-                raise HTTPException(500, f"Falha ao excluir aluno: {resp_exclusao.text}")
-            
-            enviar_log_discord(f"✅ Conta do aluno com ID {aluno_id} (CPF: {cpf}) excluída com sucesso.")
+                enviar_log_discord(
+                    f"❌ ERRO AO EXCLUIR ALUNO {aluno_id}: {resp_exclusao.text}"
+                )
+                raise HTTPException(
+                    500, f"Falha ao excluir aluno: {resp_exclusao.text}"
+                )
+
+            enviar_log_discord(
+                f"✅ Conta do aluno com ID {aluno_id} (CPF: {cpf}) excluída com sucesso."
+            )
             return {"message": "Conta do aluno excluída com sucesso."}
 
         if evento != "order_approved":
@@ -288,45 +345,74 @@ async def _process_webhook(payload: dict):
         cpf = customer.get("CPF", "").replace(".", "").replace("-", "")
         email = customer.get("email")
         celular = customer.get("mobile") or "(00) 00000-0000"
-        
+
         plano_assinatura = payload.get("Product", {}).get("product_offer_name")
         metodo_pagamento = payload.get("payment_method", "Não informado")
         valor_plano = (
-            payload.get("Product", {}).get("price")
-            or payload.get("price")
-            or payload.get("order_amount")
-            or float(os.getenv("ASSINATURA_VALOR_PADRAO", "0"))
+            parse_valor(payload.get("Product", {}).get("price"))
+            or parse_valor(payload.get("price"))
+            or parse_valor(payload.get("order_amount"))
+            or parse_valor(os.getenv("ASSINATURA_VALOR_PADRAO", "0"))
         )
 
+        if not valor_plano or valor_plano <= 0:
+            raise HTTPException(400, "Valor do plano não informado ou inválido.")
+
         cursos_ids = obter_cursos_ids(plano_assinatura)
-        if not cursos_ids: raise HTTPException(400, f"Plano '{plano_assinatura}' não mapeado.")
+        if not cursos_ids:
+            raise HTTPException(400, f"Plano '{plano_assinatura}' não mapeado.")
 
         dados_aluno_om = {
-            "token": TOKEN_UNIDADE, "nome": nome, "data_nascimento": "2000-01-01",
-            "email": email, "fone": celular, "senha": "1234567", "celular": celular,
-            "doc_cpf": cpf, "doc_rg": "0", "pais": "Brasil", "uf": customer.get("state", ""),
-            "cidade": customer.get("city", ""), "endereco": f"{customer.get('street', '')}, {customer.get('number', '')}",
-            "complemento": customer.get("complement", ""), "bairro": customer.get("neighborhood", ""), "cep": customer.get("zipcode", ""),
+            "token": TOKEN_UNIDADE,
+            "nome": nome,
+            "data_nascimento": "2000-01-01",
+            "email": email,
+            "fone": celular,
+            "senha": "1234567",
+            "celular": celular,
+            "doc_cpf": cpf,
+            "doc_rg": "0",
+            "pais": "Brasil",
+            "uf": customer.get("state", ""),
+            "cidade": customer.get("city", ""),
+            "endereco": f"{customer.get('street', '')}, {customer.get('number', '')}",
+            "complemento": customer.get("complement", ""),
+            "bairro": customer.get("neighborhood", ""),
+            "cep": customer.get("zipcode", ""),
         }
-        
-        resp_cadastro = requests.post(f"{OM_BASE}/alunos", data=dados_aluno_om, headers={"Authorization": f"Basic {BASIC_B64}"})
+
+        resp_cadastro = requests.post(
+            f"{OM_BASE}/alunos",
+            data=dados_aluno_om,
+            headers={"Authorization": f"Basic {BASIC_B64}"},
+        )
         aluno_response = resp_cadastro.json()
         if not resp_cadastro.ok or aluno_response.get("status") != "true":
             enviar_log_discord(f"❌ ERRO CADASTRO: {resp_cadastro.text}")
             raise HTTPException(500, f"Falha ao criar aluno: {resp_cadastro.text}")
-        
-        aluno_id = aluno_response.get("data", {}).get("id")
-        if not aluno_id: raise HTTPException(500, "ID do aluno não retornado após cadastro.")
 
-        dados_matricula = {"token": TOKEN_UNIDADE, "cursos": ",".join(map(str, cursos_ids))}
-        resp_matricula = requests.post(f"{OM_BASE}/alunos/matricula/{aluno_id}", data=dados_matricula, headers={"Authorization": f"Basic {BASIC_B64}"})
+        aluno_id = aluno_response.get("data", {}).get("id")
+        if not aluno_id:
+            raise HTTPException(500, "ID do aluno não retornado após cadastro.")
+
+        dados_matricula = {
+            "token": TOKEN_UNIDADE,
+            "cursos": ",".join(map(str, cursos_ids)),
+        }
+        resp_matricula = requests.post(
+            f"{OM_BASE}/alunos/matricula/{aluno_id}",
+            data=dados_matricula,
+            headers={"Authorization": f"Basic {BASIC_B64}"},
+        )
         if not resp_matricula.ok or resp_matricula.json().get("status") != "true":
-            enviar_log_discord(f"❌ ERRO MATRÍCULA (Aluno ID {aluno_id}): {resp_matricula.text}")
+            enviar_log_discord(
+                f"❌ ERRO MATRÍCULA (Aluno ID {aluno_id}): {resp_matricula.text}"
+            )
             raise HTTPException(500, f"Falha ao matricular: {resp_matricula.text}")
 
-        vencimento = (
-            datetime.datetime.now() + relativedelta(months=1)
-        ).strftime("%d/%m/%Y")
+        vencimento = (datetime.datetime.now() + relativedelta(months=1)).strftime(
+            "%d/%m/%Y"
+        )
         enviar_whatsapp_chatpro(
             nome,
             celular,
@@ -352,21 +438,31 @@ async def _process_webhook(payload: dict):
         except Exception as e:
             enviar_log_discord(f"❌ ERRO ASSINATURA ASAAS: {e}")
 
-        adicionar_aluno_planilha({
-            "nome": nome, "celular": celular, "email": email, "cpf": cpf,
-            "metodo_pagamento": metodo_pagamento, "plano_assinatura": plano_assinatura,
-        })
+        adicionar_aluno_planilha(
+            {
+                "nome": nome,
+                "celular": celular,
+                "email": email,
+                "cpf": cpf,
+                "metodo_pagamento": metodo_pagamento,
+                "plano_assinatura": plano_assinatura,
+            }
+        )
 
         return {"message": "Aluno processado com sucesso!", "aluno_id": aluno_id}
 
     except HTTPException as http_exc:
-        enviar_log_discord(f"❌ Erro de HTTP tratado: {http_exc.status_code} - {http_exc.detail}")
+        enviar_log_discord(
+            f"❌ Erro de HTTP tratado: {http_exc.status_code} - {http_exc.detail}"
+        )
         raise http_exc
     except Exception as e:
         enviar_log_discord(f"❌ EXCEÇÃO GERAL NO PROCESSAMENTO: {e}")
         raise HTTPException(500, str(e))
 
+
 # --- Rotas da API ---
+
 
 @router.post("/webhook")
 async def webhook_kiwify(request: Request):
@@ -374,11 +470,13 @@ async def webhook_kiwify(request: Request):
     order_payload = payload.get("order", payload)
     return await _process_webhook(order_payload)
 
+
 @router.post("/")
 async def webhook_root(request: Request):
     payload = await request.json()
     order_payload = payload.get("order", payload)
     return await _process_webhook(order_payload)
+
 
 @router.get("/secure/refresh-all")
 async def secure_refresh_all():
@@ -388,6 +486,7 @@ async def secure_refresh_all():
     if token_ok:
         return "🔐 Token e cache de cursos atualizados com sucesso!"
     return JSONResponse(content="❌ Falha ao atualizar token", status_code=500)
+
 
 # --- Inicialização da Aplicação ---
 @router.on_event("startup")
