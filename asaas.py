@@ -61,6 +61,69 @@ def _criar_ou_obter_cliente(nome: str, cpf: str, phone: str) -> str:
     raise HTTPException(r.status_code, r.text)
 
 
+def obter_cliente_por_cpf(cpf: str) -> str | None:
+    """Retorna o ID do cliente ASAAS a partir do CPF informado."""
+    try:
+        resp = requests.get(
+            f"{ASAAS_BASE_URL}/customers",
+            params={"cpfCnpj": cpf},
+            headers=_headers(),
+            timeout=10,
+        )
+        if resp.ok:
+            dados = resp.json().get("data") or []
+            if dados:
+                return dados[0].get("id")
+    except requests.RequestException as e:
+        logger.exception("Erro ao buscar cliente por CPF: %s", e)
+    return None
+
+
+def cancelar_assinaturas_por_cpf(cpf: str) -> int:
+    """Cancela todas as assinaturas ativas de um cliente pelo CPF."""
+    cid = obter_cliente_por_cpf(cpf)
+    if not cid:
+        logger.info("Nenhum cliente ASAAS encontrado para o CPF %s", cpf)
+        return 0
+
+    try:
+        subs = requests.get(
+            f"{ASAAS_BASE_URL}/subscriptions",
+            params={"customer": cid},
+            headers=_headers(),
+            timeout=10,
+        )
+        subs.raise_for_status()
+    except requests.RequestException as e:
+        logger.exception("Erro ao listar assinaturas: %s", e)
+        return 0
+
+    dados = subs.json().get("data") or []
+    canceladas = 0
+    for sub in dados:
+        sid = sub.get("id")
+        if not sid:
+            continue
+        try:
+            r = requests.delete(
+                f"{ASAAS_BASE_URL}/subscriptions/{sid}",
+                headers=_headers(),
+                timeout=10,
+            )
+            if r.ok:
+                canceladas += 1
+            else:
+                logger.warning(
+                    "Falha ao cancelar assinatura %s: HTTP %s | %s",
+                    sid,
+                    r.status_code,
+                    r.text,
+                )
+        except requests.RequestException as e:
+            logger.exception("Erro ao cancelar assinatura %s: %s", sid, e)
+    return canceladas
+
+
 def _enviar_whatsapp(nome: str, phone: str, login: str, modulo: str) -> None:
     mensagem = (
         f"🎉 Bem-vindo à CED BRASIL!\n"
