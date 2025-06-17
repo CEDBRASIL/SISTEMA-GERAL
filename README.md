@@ -18,6 +18,10 @@ A API ficará disponível em `http://localhost:8000` (ou na porta definida pela 
 - `POST /matricular`: realiza matrícula de alunos.
 - `GET  /alunos`: lista todos os alunos da unidade.
 - `POST /bloquear/{id_aluno}?status=0|1`: define o bloqueio de um aluno.
+- `GET  /assinantes`: lista assinaturas ativas.
+- `POST /assinantes`: cria uma assinatura no ASAAS.
+- `PUT  /assinantes/{id}`: altera dados da assinatura.
+- `DELETE /assinantes/{id}`: remove a assinatura.
 
 Um status `0` equivale a **desbloqueado**, enquanto `1` indica **bloqueado**. Exemplo:
 
@@ -96,4 +100,21 @@ gera a fatura no ASAAS e envia o link via WhatsApp para o aluno.
 
 1. O aluno é sempre cadastrado usando o **CPF informado** na compra.
 2. Pagamentos recorrentes não geram nova matrícula quando o CPF já existir na OM.
+
+## Gerenciamento de assinantes
+
+A rota `/assinantes` permite consultar e alterar assinaturas no ASAAS.
+
+### Exemplo de criação
+
+```bash
+POST /assinantes
+{
+  "nome": "João da Silva",
+  "cpf": "12345678909",
+  "whatsapp": "(61) 99999-9999",
+  "valor": 59.9,
+  "descricao": "Plano Mensal"
+}
+```
 
