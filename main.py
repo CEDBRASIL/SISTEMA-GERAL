@@ -15,6 +15,7 @@ import msgasaas
 import cobrar
 import bloquear
 import login
+import mensagemdecobranca
 from app import whatsapp
 
 
@@ -62,6 +63,7 @@ app.include_router(deletar.router,    tags=["Excluir Aluno"])
 app.include_router(bloquear.router,   tags=["Bloqueio"])
 app.include_router(login.router,      prefix="/login",     tags=["Login"])
 app.include_router(whatsapp.router)
+app.include_router(mensagemdecobranca.router)
 
 
 
