@@ -305,6 +305,56 @@ def criar_assinatura_recorrente(dados: dict):
     }
 
 
+def cancelar_assinaturas_por_cpf(cpf: str) -> None:
+    """Encerra todas as assinaturas ativas do cliente com o CPF informado."""
+    if not cpf:
+        return
+    try:
+        resp = requests.get(
+            f"{ASAAS_BASE_URL}/customers",
+            params={"cpfCnpj": cpf},
+            headers=_headers(),
+            timeout=10,
+        )
+        if not resp.ok:
+            logger.error("Erro ao buscar cliente ASAAS: %s", resp.text)
+            return
+        data = resp.json().get("data")
+        if not data:
+            logger.info("Cliente ASAAS com CPF %s não encontrado", cpf)
+            return
+        customer_id = data[0].get("id")
+        sub_resp = requests.get(
+            f"{ASAAS_BASE_URL}/subscriptions",
+            params={"customer": customer_id},
+            headers=_headers(),
+            timeout=10,
+        )
+        if not sub_resp.ok:
+            logger.error("Erro ao listar assinaturas: %s", sub_resp.text)
+            return
+        for sub in sub_resp.json().get("data", []):
+            sub_id = sub.get("id")
+            if not sub_id:
+                continue
+            del_resp = requests.delete(
+                f"{ASAAS_BASE_URL}/subscriptions/{sub_id}",
+                headers=_headers(),
+                timeout=10,
+            )
+            if del_resp.ok:
+                logger.info("Assinatura %s cancelada", sub_id)
+            else:
+                logger.error(
+                    "Falha ao cancelar assinatura %s: %s",
+                    sub_id,
+                    del_resp.text,
+                )
+    except Exception:
+        logger.exception("Exceção ao cancelar assinaturas do CPF %s", cpf)
+
+
+
 @router.post("/webhook")
 async def webhook(req: Request):
     evt = await req.json()

@@ -272,12 +272,28 @@ async def _process_webhook(payload: dict):
             aluno_id = buscar_aluno_por_cpf(cpf)
             if not aluno_id: raise HTTPException(404, "Aluno não encontrado para o CPF informado.")
             
-            resp_exclusao = requests.delete(f"{OM_BASE}/alunos/{aluno_id}", headers={"Authorization": f"Basic {BASIC_B64}"})
+            resp_exclusao = requests.delete(
+                f"{OM_BASE}/alunos/{aluno_id}",
+                headers={"Authorization": f"Basic {BASIC_B64}"},
+            )
             if not resp_exclusao.ok:
-                enviar_log_discord(f"❌ ERRO AO EXCLUIR ALUNO {aluno_id}: {resp_exclusao.text}")
-                raise HTTPException(500, f"Falha ao excluir aluno: {resp_exclusao.text}")
-            
-            enviar_log_discord(f"✅ Conta do aluno com ID {aluno_id} (CPF: {cpf}) excluída com sucesso.")
+                enviar_log_discord(
+                    f"❌ ERRO AO EXCLUIR ALUNO {aluno_id}: {resp_exclusao.text}"
+                )
+                raise HTTPException(
+                    500,
+                    f"Falha ao excluir aluno: {resp_exclusao.text}",
+                )
+
+            enviar_log_discord(
+                f"✅ Conta do aluno com ID {aluno_id} (CPF: {cpf}) excluída com sucesso."
+            )
+
+            try:
+                asaas.cancelar_assinaturas_por_cpf(cpf)
+            except Exception as e:
+                enviar_log_discord(f"❌ Erro ao cancelar assinatura ASAAS: {e}")
+
             return {"message": "Conta do aluno excluída com sucesso."}
 
         if evento != "order_approved":

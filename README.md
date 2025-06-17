@@ -96,4 +96,5 @@ gera a fatura no ASAAS e envia o link via WhatsApp para o aluno.
 
 1. O aluno é sempre cadastrado usando o **CPF informado** na compra.
 2. Pagamentos recorrentes não geram nova matrícula quando o CPF já existir na OM.
+3. Reembolsos solicitados na Kiwify cancelam automaticamente a assinatura criada no ASAAS.
 
