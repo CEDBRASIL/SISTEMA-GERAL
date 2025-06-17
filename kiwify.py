@@ -443,7 +443,8 @@ async def _process_webhook(payload: dict):
                     "dueDate": (
                         datetime.datetime.now() + relativedelta(months=1)
                     ).strftime("%Y-%m-%d"),
-                }
+                },
+                enviar_whatsapp=False,
             )
         except Exception as e:
             enviar_log_discord(f"❌ ERRO ASSINATURA ASAAS: {e}")

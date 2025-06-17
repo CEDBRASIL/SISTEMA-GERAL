@@ -179,8 +179,13 @@ def _criar_checkout(
     billing_type: str | None = None,
     callback_url: str | None = None,
     redirect_url: str | None = None,
+    enviar_whatsapp: bool = True,
 ) -> dict:
-    """Cria cobrança única no ASAAS e envia o link via WhatsApp."""
+    """Cria cobrança única no ASAAS e envia o link via WhatsApp.
+
+    Defina ``enviar_whatsapp=False`` para apenas gerar o link sem disparar a
+    mensagem automática.
+    """
     cursos_ids = cursos_ids or []
     billing_type = billing_type or os.getenv("ASAAS_BILLING_TYPE", "UNDEFINED")
 
@@ -227,14 +232,14 @@ def _criar_checkout(
         or data.get("transactionReceiptUrl")
     )
 
-    if url:
+    if url and enviar_whatsapp:
         _enviar_whatsapp_checkout(nome, phone, url)
 
     return {"url": url, "customer": customer_id}
 
 
 @router.post("/checkout")
-def criar_assinatura(dados: dict):
+def criar_assinatura(dados: dict, enviar_whatsapp: bool = True):
     nome = dados.get("nome")
     cpf = dados.get("cpf")
     phone = dados.get("whatsapp") or dados.get("phone")
@@ -244,6 +249,9 @@ def criar_assinatura(dados: dict):
     billing_type = dados.get("billingType")
     callback_url = os.getenv("ASAAS_CALLBACK_URL")
     redirect_url = os.getenv("ASAAS_REDIRECT_URL")
+
+    # Permite sobrescrever via payload
+    enviar_whatsapp = bool(dados.get("enviar_whatsapp", enviar_whatsapp))
 
     return _criar_checkout(
         nome,
@@ -255,11 +263,12 @@ def criar_assinatura(dados: dict):
         billing_type,
         callback_url,
         redirect_url,
+        enviar_whatsapp,
     )
 
 
 @router.post("/matricula")
-def gerar_matricula_checkout(dados: dict):
+def gerar_matricula_checkout(dados: dict, enviar_whatsapp: bool = True):
     """Gera link de pagamento ao receber dados de matrícula."""
     nome = dados.get("nome")
     cpf = dados.get("cpf")
@@ -281,11 +290,13 @@ def gerar_matricula_checkout(dados: dict):
         billing_type,
         callback_url,
         redirect_url,
+        enviar_whatsapp,
     )
 
 
 @router.post("/assinatura")
-def criar_assinatura_recorrente(dados: dict):
+def criar_assinatura_recorrente(dados: dict, enviar_whatsapp: bool = True):
+    """Cria uma assinatura no ASAAS e envia o link de pagamento opcionalmente."""
     nome = dados.get("nome")
     cpf = dados.get("cpf")
     phone = dados.get("whatsapp") or dados.get("phone")
@@ -345,23 +356,24 @@ def criar_assinatura_recorrente(dados: dict):
         or data.get("transactionReceiptUrl")
     )
 
-    if url:
+    if url and enviar_whatsapp:
         logger.info("Enviando link de checkout para %s", phone)
         _enviar_whatsapp_checkout(nome, phone, url)
 
-    try:
-        msgasaas.enviar_link_fatura(
-            {
-                "nome": nome,
-                "whatsapp": phone,
-                "fatura_url": url,
-                "customer": customer_id,
-                "valor": valor,
-                "descricao": descricao,
-            }
-        )
-    except Exception:
-        logger.exception("Erro ao acionar msgasaas")
+    if enviar_whatsapp:
+        try:
+            msgasaas.enviar_link_fatura(
+                {
+                    "nome": nome,
+                    "whatsapp": phone,
+                    "fatura_url": url,
+                    "customer": customer_id,
+                    "valor": valor,
+                    "descricao": descricao,
+                }
+            )
+        except Exception:
+            logger.exception("Erro ao acionar msgasaas")
 
     logger.info(
         "Assinatura criada com sucesso para %s (customer=%s, subscription=%s)",
