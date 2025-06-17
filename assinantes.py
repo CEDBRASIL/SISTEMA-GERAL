@@ -10,21 +10,52 @@ ASAAS_BASE_URL = os.getenv("ASAAS_BASE_URL", "https://api.asaas.com/v3")
 
 @router.get("/")
 def listar_assinantes():
-    """Retorna a lista de assinantes cadastrados no ASAAS."""
+    """Retorna uma lista formatada com os assinantes cadastrados."""
+
     if not ASAAS_KEY:
         raise HTTPException(500, "ASAAS_KEY não configurada")
 
     headers = {"Content-Type": "application/json", "access_token": ASAAS_KEY}
-    url = f"{ASAAS_BASE_URL}/subscriptions"
+
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(
+            f"{ASAAS_BASE_URL}/subscriptions", headers=headers, timeout=10
+        )
+        resp.raise_for_status()
     except requests.RequestException as e:
-        raise HTTPException(502, f"Erro de conexão: {e}")
+        raise HTTPException(502, f"Erro ao obter assinaturas: {e}")
 
-    if resp.ok:
-        try:
-            return resp.json()
-        except Exception:
-            return {"status": "ok"}
+    dados = resp.json().get("data") or []
+    assinantes = []
 
-    raise HTTPException(resp.status_code, resp.text)
+    for sub in dados:
+        cid = sub.get("customer")
+        valor = sub.get("value")
+        curso = sub.get("description")
+
+        nome = None
+        telefone = None
+        if cid:
+            try:
+                c = requests.get(
+                    f"{ASAAS_BASE_URL}/customers/{cid}",
+                    headers=headers,
+                    timeout=10,
+                )
+                if c.ok:
+                    cust = c.json()
+                    nome = cust.get("name")
+                    telefone = cust.get("mobilePhone") or cust.get("phone")
+            except requests.RequestException:
+                pass
+
+        assinantes.append(
+            {
+                "nome": nome,
+                "numero": telefone,
+                "valor": valor,
+                "curso": curso,
+            }
+        )
+
+    return {"assinantes": assinantes}
