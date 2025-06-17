@@ -335,6 +335,13 @@ async def _process_webhook(payload: dict):
             enviar_log_discord(
                 f"✅ Conta do aluno com ID {aluno_id} (CPF: {cpf}) excluída com sucesso."
             )
+            try:
+                canceladas = asaas.cancelar_assinaturas_por_cpf(cpf)
+                enviar_log_discord(
+                    f"🔔 {canceladas} assinatura(s) ASAAS cancelada(s) para o CPF {cpf}."
+                )
+            except Exception as e:
+                enviar_log_discord(f"❌ Erro ao cancelar assinatura ASAAS: {e}")
             return {"message": "Conta do aluno excluída com sucesso."}
 
         if evento != "order_approved":
