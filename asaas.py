@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from utils import formatar_numero_whatsapp
 from matricular import realizar_matricula
 from cursos import CURSOS_OM
+import msgasaas
 
 # Conjunto com todos os IDs de cursos válidos, usado para validar
 # o campo `externalReference` recebido no webhook
@@ -275,6 +276,20 @@ def criar_assinatura_recorrente(dados: dict):
     if url:
         logger.info("Enviando link de checkout para %s", phone)
         _enviar_whatsapp_checkout(nome, phone, url)
+
+    try:
+        msgasaas.enviar_link_fatura(
+            {
+                "nome": nome,
+                "whatsapp": phone,
+                "fatura_url": url,
+                "customer": customer_id,
+                "valor": valor,
+                "descricao": descricao,
+            }
+        )
+    except Exception:
+        logger.exception("Erro ao acionar msgasaas")
 
     logger.info(
         "Assinatura criada com sucesso para %s (customer=%s, subscription=%s)",
