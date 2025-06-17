@@ -1,6 +1,7 @@
 import os
 import logging
 from datetime import date
+from dateutil.relativedelta import relativedelta
 from typing import List
 
 import requests
@@ -228,7 +229,7 @@ def criar_assinatura_recorrente(dados: dict):
         "ASAAS_BILLING_TYPE", "UNDEFINED"
     )
     cycle = dados.get("ciclo") or dados.get("cycle") or "MONTHLY"
-    next_due = dados.get("dueDate") or date.today().isoformat()
+    next_due = dados.get("dueDate") or (date.today() + relativedelta(months=1)).isoformat()
     callback_url = os.getenv("ASAAS_CALLBACK_URL")
     redirect_url = os.getenv("ASAAS_REDIRECT_URL")
 

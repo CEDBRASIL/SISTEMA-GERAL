@@ -74,8 +74,8 @@ O retorno inclui o `subscription` gerado pelo ASAAS e o link para pagamento.
 ### Assinatura automática após compra na Kiwify
 
 Quando um pedido aprovado é recebido pelo webhook da Kiwify, o aluno é cadastrado
-no ASAAS como **assinatura**. A data de vencimento inicial é sempre 30 dias após
-o pagamento na Kiwify. O valor da assinatura pode ser enviado no payload ou,
+no ASAAS como **assinatura**. A data de vencimento inicial é sempre no mesmo dia
+do mês seguinte ao pagamento realizado na Kiwify. O valor da assinatura pode ser enviado no payload ou,
 caso não informado, será utilizado o valor definido na variável de ambiente
 `ASSINATURA_VALOR_PADRAO` (padrão `0`).
 
