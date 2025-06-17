@@ -121,7 +121,7 @@ def _criar_checkout(
     cursos_ids = cursos_ids or []
     billing_type = billing_type or os.getenv("ASAAS_BILLING_TYPE", "UNDEFINED")
 
-    if not nome or not cpf or not phone or not valor:
+    if not nome or not cpf or not phone or valor is None:
         raise HTTPException(400, "Campos obrigatórios ausentes")
 
     customer_id = _criar_ou_obter_cliente(nome, cpf, phone)
@@ -233,7 +233,7 @@ def criar_assinatura_recorrente(dados: dict):
     callback_url = os.getenv("ASAAS_CALLBACK_URL")
     redirect_url = os.getenv("ASAAS_REDIRECT_URL")
 
-    if not nome or not cpf or not phone or not valor:
+    if not nome or not cpf or not phone or valor is None:
         raise HTTPException(400, "Campos obrigatórios ausentes")
 
     customer_id = _criar_ou_obter_cliente(nome, cpf, phone)
