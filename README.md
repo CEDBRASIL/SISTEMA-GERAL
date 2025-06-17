@@ -78,6 +78,12 @@ acima. Por padrão a cobrança é criada com `billingType="UNDEFINED"`, permitin
 que o aluno escolha entre boleto, PIX ou cartão. O link de pagamento também é
 enviado automaticamente via WhatsApp.
 
+### Matrícula com geração de fatura
+
+Se preferir disparar a cobrança diretamente a partir do formulário de matrícula,
+utilize `POST /asaas/matricula` com os mesmos campos do checkout. O endpoint
+gera a fatura no ASAAS e envia o link via WhatsApp para o aluno.
+
 ### Regras de matrícula via ASAAS
 
 1. O aluno é sempre cadastrado usando o **CPF informado** na compra.

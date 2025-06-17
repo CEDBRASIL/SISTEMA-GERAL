@@ -104,19 +104,20 @@ def _enviar_whatsapp_checkout(nome: str, phone: str, url: str) -> None:
         logger.exception("Erro ao enviar mensagem de checkout via WhatsApp")
 
 
-@router.post("/checkout")
-def criar_assinatura(dados: dict):
-    nome = dados.get("nome")
-    cpf = dados.get("cpf")
-    phone = dados.get("whatsapp") or dados.get("phone")
-    valor = dados.get("valor")
-    descricao = dados.get("descricao") or dados.get("curso") or "Curso"
-    cursos_ids: List[int] = dados.get("cursos_ids") or []
-    billing_type = dados.get("billingType") or os.getenv(
-        "ASAAS_BILLING_TYPE", "UNDEFINED"
-    )
-    callback_url = os.getenv("ASAAS_CALLBACK_URL")
-    redirect_url = os.getenv("ASAAS_REDIRECT_URL")
+def _criar_checkout(
+    nome: str,
+    cpf: str,
+    phone: str,
+    valor: float,
+    descricao: str = "Curso",
+    cursos_ids: List[int] | None = None,
+    billing_type: str | None = None,
+    callback_url: str | None = None,
+    redirect_url: str | None = None,
+) -> dict:
+    """Cria cobrança única no ASAAS e envia o link via WhatsApp."""
+    cursos_ids = cursos_ids or []
+    billing_type = billing_type or os.getenv("ASAAS_BILLING_TYPE", "UNDEFINED")
 
     if not nome or not cpf or not phone or not valor:
         raise HTTPException(400, "Campos obrigatórios ausentes")
@@ -138,7 +139,10 @@ def criar_assinatura(dados: dict):
 
     try:
         r = requests.post(
-            f"{ASAAS_BASE_URL}/payments", json=payload, headers=_headers(), timeout=10
+            f"{ASAAS_BASE_URL}/payments",
+            json=payload,
+            headers=_headers(),
+            timeout=10,
         )
     except requests.RequestException as e:
         raise HTTPException(502, f"Erro de conexão: {e}")
@@ -157,10 +161,58 @@ def criar_assinatura(dados: dict):
     if url:
         _enviar_whatsapp_checkout(nome, phone, url)
 
-    return {
-        "url": url,
-        "customer": customer_id,
-    }
+    return {"url": url, "customer": customer_id}
+
+
+@router.post("/checkout")
+def criar_assinatura(dados: dict):
+    nome = dados.get("nome")
+    cpf = dados.get("cpf")
+    phone = dados.get("whatsapp") or dados.get("phone")
+    valor = dados.get("valor")
+    descricao = dados.get("descricao") or dados.get("curso") or "Curso"
+    cursos_ids: List[int] = dados.get("cursos_ids") or []
+    billing_type = dados.get("billingType")
+    callback_url = os.getenv("ASAAS_CALLBACK_URL")
+    redirect_url = os.getenv("ASAAS_REDIRECT_URL")
+
+    return _criar_checkout(
+        nome,
+        cpf,
+        phone,
+        valor,
+        descricao,
+        cursos_ids,
+        billing_type,
+        callback_url,
+        redirect_url,
+    )
+
+
+@router.post("/matricula")
+def gerar_matricula_checkout(dados: dict):
+    """Gera link de pagamento ao receber dados de matrícula."""
+    nome = dados.get("nome")
+    cpf = dados.get("cpf")
+    phone = dados.get("whatsapp") or dados.get("phone")
+    valor = dados.get("valor")
+    descricao = dados.get("descricao") or dados.get("curso") or "Curso"
+    cursos_ids: List[int] = dados.get("cursos_ids") or []
+    billing_type = dados.get("billingType")
+    callback_url = os.getenv("ASAAS_CALLBACK_URL")
+    redirect_url = os.getenv("ASAAS_REDIRECT_URL")
+
+    return _criar_checkout(
+        nome,
+        cpf,
+        phone,
+        valor,
+        descricao,
+        cursos_ids,
+        billing_type,
+        callback_url,
+        redirect_url,
+    )
 
 
 @router.post("/assinatura")
