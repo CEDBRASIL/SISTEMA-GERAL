@@ -22,6 +22,7 @@ A API ficará disponível em `http://localhost:8000` (ou na porta definida pela 
 - `POST /assinantes`: cria uma assinatura no ASAAS.
 - `PUT  /assinantes/{id}`: altera dados da assinatura.
 - `DELETE /assinantes/{id}`: remove a assinatura.
+- `GET  /site`: exibe uma página de teste.
 
 Um status `0` equivale a **desbloqueado**, enquanto `1` indica **bloqueado**. Exemplo:
 

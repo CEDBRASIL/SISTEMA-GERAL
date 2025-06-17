@@ -16,6 +16,7 @@ import cobrar
 import bloquear
 import login
 import mensagemdecobranca
+import site_page
 from app import whatsapp
 
 
@@ -64,6 +65,7 @@ app.include_router(bloquear.router,   tags=["Bloqueio"])
 app.include_router(login.router,      prefix="/login",     tags=["Login"])
 app.include_router(whatsapp.router)
 app.include_router(mensagemdecobranca.router)
+app.include_router(site_page.router)
 
 
 
